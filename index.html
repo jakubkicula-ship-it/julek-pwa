@@ -223,6 +223,15 @@
       <div class="tileIcon">👨‍👩‍👦</div>
       <div class="tileTitle">Rodzic</div>
       <div class="tileDesc">Dodawanie/odejmowanie godzin</div>
+<hr>
+
+<div class="box">
+  <h3>📌 Notatki administratora</h3>
+  <div id="adminNotesPublic" class="muted">
+    Brak aktualnych notatek.
+  </div>
+</div>
+
     </div>
 
     <div class="tile tPdf" onclick="openPdf('UMOWA_JULEK_system_godzin.pdf')">
@@ -237,6 +246,11 @@
       <div class="tileDesc">Do odczytu</div>
     </div>
   </div>
+<div class="tile tPdf" onclick="openPdf('Instrukcja_obsługi.pdf')">
+  <div class="tileIcon">📘</div>
+  <div class="tileTitle">Instrukcja obsługi</div>
+  <div class="tileDesc">PDF – jak działa program</div>
+</div>
 
   <div class="muted" style="margin-top:12px;">
     PINy działają lokalnie w tej stronie. RESET jest tylko w zmianach administracyjnych Kuby.
@@ -291,6 +305,20 @@
     <div class="adminTitleRow">
       <h3 style="margin:0;">Zmiany administracyjne</h3>
       <span class="muted">Dostęp tylko dla Kuby (PIN wymagany przy wejściu).</span>
+<hr>
+
+<h3>Notatki administratora</h3>
+
+<textarea id="adminNoteInput"
+  placeholder="Wpisz notatkę widoczną na ekranie logowania..."
+  style="width:100%;min-height:80px;padding:10px;border-radius:10px;"></textarea>
+
+<div class="row" style="margin-top:8px;">
+  <button onclick="addAdminNote()" class="btnGreen">Dodaj notatkę</button>
+</div>
+
+<div id="adminNotesAdmin" style="margin-top:12px;"></div>
+
     </div>
 
     <div class="row" style="margin-top:10px;">
@@ -1346,6 +1374,82 @@ setInterval(()=>{
 purgeOldData();
 processAutoAcceptAppeals();
 checkAutoClose();
+/* ================== NOTATKI ADMINISTRATORA ================== */
+const notesRef = db.ref("meta/adminNotes");
+
+notesRef.on("value", snap => {
+  const box = document.getElementById("adminNotesPublic");
+  if(!box) return;
+
+  box.innerHTML = "";
+  if(!snap.exists()){
+    box.innerText = "Brak aktualnych notatek.";
+    return;
+  }
+
+  snap.forEach(ch => {
+    const v = ch.val();
+    const div = document.createElement("div");
+    div.className = "box";
+    div.innerHTML = `
+      <div>${escapeHtml(v.text)}</div>
+      <div class="muted">Dodano: ${tsToWarsaw(v.ts)}</div>
+    `;
+    box.appendChild(div);
+  });
+});
+
+function renderAdminNotes(){
+  const box = document.getElementById("adminNotesAdmin");
+  if(!box) return;
+
+  notesRef.once("value", snap=>{
+    box.innerHTML = "";
+    if(!snap.exists()){
+      box.innerHTML = "<div class='muted'>Brak notatek.</div>";
+      return;
+    }
+
+    snap.forEach(ch=>{
+      const v = ch.val();
+      const wrap = document.createElement("div");
+      wrap.className = "box";
+
+      const btn = document.createElement("button");
+      btn.className = "btnRed smallbtn";
+      btn.innerText = "Usuń";
+      btn.onclick = ()=> notesRef.child(ch.key).remove();
+
+      wrap.innerHTML = `
+        <div>${escapeHtml(v.text)}</div>
+        <div class="muted">Dodano: ${tsToWarsaw(v.ts)}</div>
+      `;
+      wrap.appendChild(btn);
+      box.appendChild(wrap);
+    });
+  });
+}
+
+function addAdminNote(){
+  const ta = document.getElementById("adminNoteInput");
+  if(!ta || !ta.value.trim()) return alert("Treść jest pusta.");
+
+  notesRef.push({
+    text: ta.value.trim(),
+    ts: Date.now(),
+    by: rodzic
+  });
+
+  ta.value = "";
+  renderAdminNotes();
+}
+
+/* podpięcie do wejścia admina */
+const _openAdmin = openAdmin;
+openAdmin = async function(){
+  await _openAdmin();
+  if(rodzic==="Kuba") renderAdminNotes();
+};
 
 /* ================== HELPERS ================== */
 function escapeHtml(str){
