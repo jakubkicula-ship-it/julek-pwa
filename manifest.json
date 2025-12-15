@@ -1,11 +1,11 @@
 {
-  "name": "Zadania Julka",
-  "short_name": "Julek",
-  "description": "System punktów, godzin i odwołań Julka",
-  "start_url": "./index.html",
+  "name": "Punkty Julka",
+  "short_name": "Julka",
+  "start_url": "/julek-pwa/index.html",
+  "scope": "/julek-pwa/",
   "display": "standalone",
-  "background_color": "#f5fff5",
-  "theme_color": "#7ccc7c",
+  "background_color": "#ffffff",
+  "theme_color": "#2e7d32",
   "icons": [
     {
       "src": "icon-192.png",
