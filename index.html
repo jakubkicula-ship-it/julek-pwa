@@ -11,25 +11,25 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Punkty Julka</title>
+
 <style>
+  * { box-sizing: border-box; }
+
   body { font-family: Arial, sans-serif; margin: 16px; }
-  button { margin: 4px; padding: 10px 12px; border: 1px solid #ccc; background: #f7f7f7; border-radius: 8px; cursor: pointer; }
+  button { margin: 4px; padding: 10px 12px; border: 1px solid #ccc; background: #f7f7f7; border-radius: 10px; cursor: pointer; }
   button:hover { background: #eee; }
   button[disabled] { opacity: .45; cursor: not-allowed; }
   .panel { display:none; }
-  h1 { margin: 8px 0 12px; }
+  h1 { margin: 8px 0 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   h2, h3 { margin: 14px 0 8px; }
   hr { margin: 16px 0; }
-  .box { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin: 10px 0; background: #fafafa; }
+  .box { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 10px 0; background: #fafafa; }
   .row { display:flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .muted { color:#666; font-size: 12px; }
   ul { padding-left: 18px; }
   li { margin: 6px 0; }
-  .tag { display:inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid #ddd; font-size: 12px; background: #fff; margin-left: 6px; }
-  .danger { border-color:#f2b8b5; background:#fff7f6; }
-  .ok { border-color:#bde5bd; background:#f5fff5; }
-  .hidden { display:none; }
-  .smallbtn { padding: 6px 10px; font-size: 12px; }
+  .tag { display:inline-block; padding: 3px 10px; border-radius: 999px; border: 1px solid #ddd; font-size: 12px; background: #fff; }
+  .smallbtn { padding: 7px 10px; font-size: 12px; border-radius: 10px; }
 
   /* przycisk odwołań */
   .btnGreen { background:#eaffea; border-color:#7ccc7c; }
@@ -38,20 +38,84 @@
   .btnRed:hover { background:#ffdcdc; }
 
   /* statusy odwołań */
-  .stPending { background:#fff7d6; border-color:#e3c77a; } /* żółty */
-  .stAccepted { background:#eaffea; border-color:#7ccc7c; } /* zielony */
-  .stRejected { background:#ffe8e8; border-color:#e09a9a; } /* czerwony */
-  .stCancelled { background:#f1f1f1; border-color:#cfcfcf; } /* szary */
+  .stPending { background:#fff7d6; border-color:#e3c77a; }
+  .stAccepted { background:#eaffea; border-color:#7ccc7c; }
+  .stRejected { background:#ffe8e8; border-color:#e09a9a; }
+  .stCancelled { background:#f1f1f1; border-color:#cfcfcf; }
 
   /* komunikat weekendowy */
-  .weekInfo { margin-top: 10px; padding: 10px; border-radius: 10px; border: 1px dashed #cfcfcf; background:#fff; }
+  .weekInfo { margin-top: 10px; padding: 10px; border-radius: 12px; border: 1px dashed #cfcfcf; background:#fff; }
   .weekMsgText { font-weight: 700; font-size: 14px; }
   .weekMsgTextBig { font-weight: 800; font-size: 18px; }
+
+  /* ADMIN */
+  .adminBox { border-color:#bde5bd; background:#f5fff5; }
+  .adminTitleRow { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+
+  /* ===== PIN modal (ładniejsze i nic nie wystaje) ===== */
+  .modalOverlay{
+    position:fixed; inset:0;
+    background:rgba(20,20,20,.45);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999;
+    padding: 16px;
+    backdrop-filter: blur(1.5px);
+  }
+  .modalCard{
+    background:#fff;
+    border:1px solid #e6e6e6;
+    border-radius:16px;
+    padding:18px 18px 14px;
+    width:min(440px, 100%);
+    box-shadow:0 16px 55px rgba(0,0,0,.28);
+    overflow:hidden; /* żeby nic nie wychodziło poza ramkę */
+  }
+  .modalTitle{
+    font-weight:800;
+    font-size:18px;
+    margin-bottom:8px;
+    line-height:1.2;
+  }
+  .modalHint{
+    color:#666;
+    font-size:12px;
+    margin: 0 0 10px;
+  }
+  .modalCard input{
+    width:100%;
+    padding:12px 14px;
+    border:1px solid #d6d6d6;
+    border-radius:12px;
+    font-size:18px;
+    outline:none;
+    background:#fff;
+  }
+  .modalCard input:focus{
+    border-color:#2e7d32;
+    box-shadow: inset 0 0 0 3px rgba(46,125,50,.14); /* ring do środka, nie na zewnątrz */
+  }
+  .modalActions{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    margin-top:12px;
+  }
+  .modalActions button{
+    padding:9px 14px;
+    border-radius:12px;
+  }
+
+  /* WAŻNE: hidden musi wygrywać zawsze */
+  .hidden { display:none !important; }
 </style>
 </head>
+
 <body>
 
-<h1>Punkty Julka</h1>
+<h1>
+  Punkty Julka
+  <span id="appVer" class="tag"></span>
+</h1>
 
 <div id="login" class="box">
   <h2>Wybierz panel</h2>
@@ -60,7 +124,26 @@
     <button onclick="loginRodzic()">Rodzic</button>
     <button onclick="resetAllData()" title="Czyści CAŁĄ bazę (dni/logi/odwołania/weekend/meta).">RESET (start od zera)</button>
   </div>
+
+  <div class="row" style="margin-top:8px;">
+    <button onclick="openPdf('UMOWA_JULEK_system_godzin.pdf')">Regulamin (PDF)</button>
+    <button onclick="openPdf('TABELA_PUNKTOW_JULEK.pdf')">Tabela punktów (PDF)</button>
+  </div>
+
   <div class="muted">Uwaga: PINy działają lokalnie w tej stronie.</div>
+</div>
+
+<!-- PIN modal (maskowane) -->
+<div id="pinModal" class="modalOverlay hidden" hidden>
+  <div class="modalCard">
+    <div id="pinTitle" class="modalTitle">PIN</div>
+    <div class="modalHint">Wpis jest maskowany (gwiazdki).</div>
+    <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+    <div class="modalActions">
+      <button id="pinCancel" class="smallbtn">Anuluj</button>
+      <button id="pinOk" class="smallbtn">OK</button>
+    </div>
+  </div>
 </div>
 
 <!-- ================= PANEL RODZIC ================= -->
@@ -70,7 +153,7 @@
     <div><b>Zalogowany rodzic:</b> <span id="rodzicName"></span></div>
     <div class="muted">Dziś: <b><span id="todayR">0</span> h</b> · Tydzień: <b><span id="weekR">0</span> h</b> · Weekend: <b><span id="weekendR">0</span> h</b></div>
     <div class="row" style="margin-top:8px;">
-      <button onclick="zamknijTydzien()">Zamknij tydzień</button>
+      <button id="btnAdmin" class="hidden" onclick="openAdmin()">Zmiany administracyjne</button>
       <span class="muted">Auto-zamknięcie: piątek 18:00 (Warszawa) — wykona się, gdy ktoś ma otwartą apkę albo wejdzie po czasie.</span>
     </div>
   </div>
@@ -88,14 +171,26 @@
       </button>
     </div>
 
-    <!-- komunikat weekendowy POD przyciskiem odwołań -->
     <div id="weekendInfoParent" class="weekInfo hidden">
       <div id="weekendInfoTextParent" class="weekMsgText"></div>
       <div id="weekendInfoDateParent" class="muted"></div>
     </div>
   </div>
 
-  <!-- Godziny uznaniowe -->
+  <div id="secAdmin" class="box adminBox hidden">
+    <div class="adminTitleRow">
+      <h3 style="margin:0;">Zmiany administracyjne</h3>
+      <span class="muted">Dostęp tylko dla Kuby (PIN wymagany przy wejściu).</span>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button onclick="zamknijTydzien()">Zamknij tydzień</button>
+      <button class="btnGreen" onclick="saveAndCloseAdmin()">Zapisz i zamknij zmiany administracyjne</button>
+    </div>
+    <div class="muted" style="margin-top:8px;">
+      Ten przycisk zapisuje stan zmian administracyjnych (meta) i zamyka sekcję bez ponownego podawania PINu.
+    </div>
+  </div>
+
   <div id="secUzn" class="box hidden">
     <h3>Godziny uznaniowe (komentarz obowiązkowy)</h3>
     <div class="row">
@@ -107,7 +202,6 @@
     <div class="muted">Po kliknięciu musisz wpisać: za co.</div>
   </div>
 
-  <!-- Oceny -->
   <div id="secOceny" class="box hidden">
     <h3>Oceny</h3>
 
@@ -135,16 +229,17 @@
     <div class="muted">Tu działa ostrzeżenie, jeśli drugi rodzic już dał punkty za ten sam przedmiot i ocenę tego samego dnia.</div>
   </div>
 
-  <!-- Obowiązki / zachowanie -->
   <div id="secObow" class="box hidden">
     <h3>Obowiązki / Zachowanie (komentarz opcjonalny)</h3>
     <div class="row">
-      <!-- bez ostrzeżenia o dubletach -->
       <button onclick="obow( 1,'Obowiązki zrobione', 'obow_ok', false)">Obowiązki zrobione +1h</button>
+
+      <button onclick="obow( 4,'Pozytywna uwaga w szkole', 'uwaga_pos', false)">Pozytywna uwaga w szkole +4h</button>
+      <button onclick="obow(-4,'Negatywna uwaga w szkole', 'uwaga_neg', false)">Negatywna uwaga w szkole -4h</button>
+
       <button onclick="obow(-2,'Obowiązki niezrobione', 'obow_no', false)">Obowiązki niezrobione -2h</button>
       <button onclick="obow(-10,'Oszustwo', 'oszustwo', false)">Oszustwo -10h</button>
 
-      <!-- z ostrzeżeniem o dubletach -->
       <button onclick="obow(-5,'Bicie / obrażanie Michała', 'agresja', true)">Bicie/obrażanie Michała -5h</button>
       <button onclick="obow(-2,'Brak higieny', 'higiena', true)">Brak higieny -2h</button>
       <button onclick="obow(-2,'Porządek w pokoju niezrobiony', 'pokoj', true)">Porządek w pokoju -2h</button>
@@ -172,7 +267,6 @@
     <div class="muted">Dziś: <b><span id="todayJ">0</span> h</b> · Tydzień: <b><span id="weekJ">0</span> h</b> · Weekend: <b><span id="weekendJ">0</span> h</b></div>
   </div>
 
-  <!-- komunikat weekendowy (większa czcionka) -->
   <div id="weekendInfoJulek" class="box hidden">
     <div id="weekendInfoTextJulek" class="weekMsgTextBig"></div>
     <div id="weekendInfoDateJulek" class="muted"></div>
@@ -189,6 +283,13 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
 <script>
+/* ================== WERSJA ================== */
+const APP_VERSION = "1.0.0";
+(function(){
+  const v = document.getElementById("appVer");
+  if(v) v.innerText = "v" + APP_VERSION;
+})();
+
 /* ================== FIREBASE ================== */
 firebase.initializeApp({
   apiKey:"AIzaSyD5asqQ2YEr_7LB9ysmyP_tZBj515-NW1o",
@@ -196,6 +297,12 @@ firebase.initializeApp({
   databaseURL:"https://julek-punkty-default-rtdb.europe-west1.firebasedatabase.app"
 });
 const db = firebase.database();
+
+/* ================== PDF ================== */
+function openPdf(file){
+  const w = window.open(file, "_blank");
+  if(!w) location.href = file;
+}
 
 /* ================== CZAS (EUROPE/WARSAW) ================== */
 function nowWarsawParts() {
@@ -214,7 +321,7 @@ function nowWarsawParts() {
   const hour = Number(get('hour'));
   const minute = Number(get('minute'));
   const second = Number(get('second'));
-  const weekday = get('weekday'); // np. "pt."
+  const weekday = get('weekday');
   const isoDate = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   return {year,month,day,hour,minute,second,weekday,isoDate};
 }
@@ -241,20 +348,113 @@ function isoWeekKeyWarsaw() {
   return `${t.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
 }
 
+/* ================== PIN MODAL (maskowane) ================== */
+function showPinModal(title){
+  const modal  = document.getElementById("pinModal");
+  const ttl    = document.getElementById("pinTitle");
+  const input  = document.getElementById("pinInput");
+  ttl.innerText = title || "PIN:";
+  input.value = "";
+  modal.hidden = false;
+  modal.classList.remove("hidden");
+  setTimeout(()=>input.focus(), 0);
+}
+function hidePinModal(){
+  const modal = document.getElementById("pinModal");
+  modal.classList.add("hidden");
+  modal.hidden = true;
+}
+
+function askPinMasked(title){
+  const input  = document.getElementById("pinInput");
+  const okBtn  = document.getElementById("pinOk");
+  const noBtn  = document.getElementById("pinCancel");
+
+  showPinModal(title);
+
+  return new Promise(resolve=>{
+    const close = (val)=>{
+      hidePinModal();
+      input.onkeydown = null;
+      okBtn.onclick = null;
+      noBtn.onclick = null;
+      resolve(val);
+    };
+
+    okBtn.onclick = ()=> close(input.value);
+    noBtn.onclick = ()=> close(null);
+
+    input.onkeydown = (e)=>{
+      if(e.key === "Enter") okBtn.click();
+      if(e.key === "Escape") noBtn.click();
+    };
+  });
+}
+
 /* ================== UI / LOGOWANIE ================== */
-let rodzic = ""; // "Kuba" / "Marlena"
+let rodzic = "";
 const loginBox = document.getElementById("login");
 const rodzicDiv = document.getElementById("rodzic");
 const julekDiv = document.getElementById("julek");
 
-function loginRodzic(){
-  const pin = prompt("PIN:");
+function expectedPinForRodzic(){
+  if(rodzic === "Kuba") return "6978";
+  if(rodzic === "Marlena") return "986";
+  return "";
+}
+
+/* ADMIN: zapis zmian */
+let adminDraft = {};
+async function saveAndCloseAdmin(){
+  if(rodzic !== "Kuba") return;
+  await db.ref("meta/adminSettings").update({
+    ...adminDraft,
+    lastSavedAt: Date.now(),
+    lastSavedBy: rodzic,
+    appVersion: APP_VERSION
+  });
+  adminDraft = {};
+  const sec = document.getElementById("secAdmin");
+  if(sec) sec.classList.add("hidden");
+}
+
+async function openAdmin(){
+  if(rodzic !== "Kuba") return;
+  const pin = await askPinMasked("PIN (Zmiany administracyjne):");
+  if(pin === null) return;
+
+  if(pin !== expectedPinForRodzic()){
+    alert("Zły PIN");
+    return;
+  }
+  const sec = document.getElementById("secAdmin");
+  if(sec){
+    sec.classList.toggle("hidden");
+    if(!sec.classList.contains("hidden")){
+      sec.scrollIntoView({behavior:"smooth", block:"start"});
+    }
+  }
+}
+
+async function loginRodzic(){
+  const pin = await askPinMasked("PIN:");
+  if(pin === null) return;
+
   if(pin==="6978") rodzic="Kuba";
   else if(pin==="986") rodzic="Marlena";
   else return alert("Zły PIN");
+
   loginBox.style.display="none";
   rodzicDiv.style.display="block";
   document.getElementById("rodzicName").innerText = rodzic;
+
+  const btnA = document.getElementById("btnAdmin");
+  const secA = document.getElementById("secAdmin");
+  if(btnA){
+    if(rodzic === "Kuba") btnA.classList.remove("hidden");
+    else btnA.classList.add("hidden");
+  }
+  if(secA) secA.classList.add("hidden");
 
   renderAll();
 
@@ -334,7 +534,7 @@ function uzn(h){
   zapis(h, "Uznaniowe: "+t.trim(), "uzn", false);
 }
 
-/* ================== OBOW / ZACH (komentarz opcjonalny) ================== */
+/* ================== OBOW / ZACH ================== */
 function obow(h, label, category, checkDuplicate){
   let note = prompt("Dodatkowy komentarz? (opcjonalnie)\nMożesz zostawić puste.");
   note = (note || "").trim();
@@ -342,7 +542,7 @@ function obow(h, label, category, checkDuplicate){
   zapis(h, full, category, checkDuplicate);
 }
 
-/* ================== GENERATORY PRZYCISKÓW OCEN ================== */
+/* ================== GENERATORY OCEN ================== */
 function genGrades(containerId, subject, map){
   const el = document.getElementById(containerId);
   if(!el) return;
@@ -390,7 +590,7 @@ db.ref("weekend").on("value",s=>{
   setText("weekendJ", v);
 });
 
-/* ================== WEEKEND SUMMARY (komunikat) ================== */
+/* ================== WEEKEND SUMMARY ================== */
 db.ref("meta/weekendSummary").on("value", s=>{
   renderWeekendSummary(s.val());
 });
@@ -450,10 +650,10 @@ async function setWeekendSummary(hours, weekKey, reason){
   await db.ref("meta/weekendSummary").set(payload);
 }
 
-/* ================== CACHE: LOGI i ODWOŁANIA ================== */
-let logsCache = {};          // {date: {logId: value}}
-let appealsByLog = {};       // {"date|logId": appealObj}
-let appealsList = [];        // [{key, ...o}]
+/* ================== CACHE ================== */
+let logsCache = {};
+let appealsByLog = {};
+let appealsList = [];
 
 db.ref("log").on("value", s=>{
   logsCache = {};
@@ -487,7 +687,6 @@ db.ref("odwolania").on("value", s=>{
     appealsList.push({...o, key});
   });
 
-  // sort: PENDING na górze, potem reszta (najnowsze)
   appealsList.sort((a,b)=>{
     const ap = (a.status||"") === "pending";
     const bp = (b.status||"") === "pending";
@@ -631,12 +830,11 @@ function renderJulekLogs(){
 
       if(appeal){
         const span = document.createElement("span");
-        span.className = "tag " + appealClass(appeal);   // KOLORY statusów jak u rodziców
+        span.className = "tag " + appealClass(appeal);
         span.innerText = `Status: ${st}`;
         li.appendChild(span);
         li.appendChild(document.createTextNode(" "));
 
-        // komentarz przy odrzuceniu (widoczny u Julka)
         if((appeal.status||"") === "rejected" && appeal.komentarz){
           const comm = document.createElement("div");
           comm.className = "muted";
@@ -672,7 +870,7 @@ function renderJulekLogs(){
   });
 }
 
-/* ================== USUWANIE WPISU ================== */
+/* ================== USUWANIE ================== */
 async function usunWpisDzis(date, logId, v){
   if(!rodzic) return alert("Najpierw zaloguj rodzica.");
   if(date !== dzis) return alert("Można usuwać tylko dzisiejsze wpisy.");
@@ -728,7 +926,6 @@ async function odwolanie(date, logId, v){
   alert("Odwołanie zapisane.");
 }
 
-/* Auto-akcept po terminie */
 async function processAutoAcceptAppeals(){
   const snap = await db.ref("odwolania").once("value");
   const nowIso = nowWarsawParts().isoDate;
@@ -759,7 +956,7 @@ async function processAutoAcceptAppeals(){
   }
 }
 
-/* ================== PANEL RODZICA: ODWOŁANIA ================== */
+/* ================== RODZIC: ODWOŁANIA ================== */
 function updateAppealsButton(){
   const btn = document.getElementById("btnAppeals");
   const badge = document.getElementById("appealsBadge");
@@ -876,12 +1073,11 @@ function renderParentAppeals(){
   });
 }
 
-/* ================== ZAMKNIĘCIE TYGODNIA (NAPRAWA LOGIKI) ================== */
+/* ================== ZAMKNIĘCIE TYGODNIA ================== */
 async function acquireCloseLock(){
   const lockRef = db.ref("meta/closeLock");
   const now = Date.now();
   const res = await lockRef.transaction(v=>{
-    // jeśli lock jest świeży (< 2 min), nie wchodzimy drugi raz
     if(v && v.at && (now - v.at) < 2*60*1000) return;
     return { at: now };
   });
@@ -893,7 +1089,7 @@ async function releaseCloseLock(){
 
 async function closeWeekIfNotClosed(weekKey, reason, force){
   const got = await acquireCloseLock();
-  if(!got) return; // ktoś inny zamyka / kliknięte 2x
+  if(!got) return;
 
   try{
     const metaRef = db.ref("meta/lastCloseWeekKey");
@@ -902,29 +1098,24 @@ async function closeWeekIfNotClosed(weekKey, reason, force){
     const dniSnap = await db.ref("dni").once("value");
     const dniHasData = dniSnap.exists();
 
-    // Jeśli meta mówi "zamknięte", ale dni/log dalej istnieją -> to błąd stanu: ZAMYKAMY i czyścimy
     const inconsistent = (last === weekKey) && dniHasData;
 
-    // Jeżeli naprawdę już zamknięte i nie ma dni -> tylko dopisz/odśwież komunikat
     if((last === weekKey) && !force && !dniHasData && !inconsistent){
       const wv = (await db.ref("weekend").once("value")).val() || 0;
       await setWeekendSummary(wv, weekKey, reason || "already_closed");
       return;
     }
 
-    // policz sumę tygodnia z dni (jeśli są)
     let sum = 0;
     if(dniHasData){
       dniSnap.forEach(d=> sum += (d.val()||0));
     } else {
-      // brak dni -> nie nadpisuj weekendu zerem, bierz aktualny weekend
       sum = (await db.ref("weekend").once("value")).val() || 0;
     }
 
     await db.ref("weekend").set(sum);
     await setWeekendSummary(sum, weekKey, reason || "manual");
 
-    // czyścimy tydzień tylko jeśli były dni (albo stan niespójny)
     if(dniHasData || inconsistent || force){
       await db.ref("dni").remove();
       await db.ref("log").remove();
@@ -944,7 +1135,6 @@ async function zamknijTydzien(){
   await closeWeekIfNotClosed(wk, "manual", true);
 }
 
-/* Auto: piątek 18:00 Warsaw */
 async function checkAutoClose(){
   const p = nowWarsawParts();
   const isFriday = (p.weekday || "").toLowerCase().startsWith("pt");
@@ -957,7 +1147,7 @@ async function checkAutoClose(){
   await closeWeekIfNotClosed(wk, "auto_friday_18", false);
 }
 
-/* ================== RETENCJA: MAX 2 TYGODNIE ================== */
+/* ================== RETENCJA ================== */
 async function purgeOldData(){
   const cutoff = isoDateShift(nowWarsawParts().isoDate, -14);
 
@@ -1024,6 +1214,7 @@ function setText(id, val){
   if(el) el.innerText = String(val);
 }
 </script>
+
 <button id="updateBtn"
         style="position:fixed;bottom:10px;right:10px;
         background:#d4f8d4;border:2px solid #2e7d32;
@@ -1062,6 +1253,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
