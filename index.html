@@ -15,21 +15,66 @@
 <style>
   * { box-sizing: border-box; }
 
-  body { font-family: Arial, sans-serif; margin: 16px; }
-  button { margin: 4px; padding: 10px 12px; border: 1px solid #ccc; background: #f7f7f7; border-radius: 10px; cursor: pointer; }
-  button:hover { background: #eee; }
-  button[disabled] { opacity: .45; cursor: not-allowed; }
+  body{
+    font-family: Arial, sans-serif;
+    margin: 16px;
+    background: linear-gradient(180deg, #f3fff4 0%, #ffffff 55%, #ffffff 100%);
+  }
+
+  button{
+    margin: 4px;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    background: #f7f7f7;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  button:hover{ background:#eee; }
+  button[disabled]{ opacity:.45; cursor:not-allowed; }
+
   .panel { display:none; }
-  h1 { margin: 8px 0 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  h1{
+    margin: 8px 0 12px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .headerHero{
+    border: 1px solid #dfeee0;
+    border-radius: 16px;
+    padding: 14px 14px;
+    background: linear-gradient(135deg, rgba(46,125,50,.10) 0%, rgba(46,125,50,.03) 55%, rgba(255,255,255,1) 100%);
+  }
+
   h2, h3 { margin: 14px 0 8px; }
   hr { margin: 16px 0; }
-  .box { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 10px 0; background: #fafafa; }
-  .row { display:flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .muted { color:#666; font-size: 12px; }
-  ul { padding-left: 18px; }
-  li { margin: 6px 0; }
-  .tag { display:inline-block; padding: 3px 10px; border-radius: 999px; border: 1px solid #ddd; font-size: 12px; background: #fff; }
-  .smallbtn { padding: 7px 10px; font-size: 12px; border-radius: 10px; }
+
+  .box{
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 12px;
+    margin: 10px 0;
+    background: #fafafa;
+  }
+
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .muted{ color:#666; font-size:12px; }
+  ul{ padding-left:18px; }
+  li{ margin:6px 0; }
+
+  .tag{
+    display:inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid #ddd;
+    font-size: 12px;
+    background: #fff;
+  }
+
+  .smallbtn{ padding: 7px 10px; font-size: 12px; border-radius: 10px; }
 
   /* przycisk odwołań */
   .btnGreen { background:#eaffea; border-color:#7ccc7c; }
@@ -44,13 +89,62 @@
   .stCancelled { background:#f1f1f1; border-color:#cfcfcf; }
 
   /* komunikat weekendowy */
-  .weekInfo { margin-top: 10px; padding: 10px; border-radius: 12px; border: 1px dashed #cfcfcf; background:#fff; }
-  .weekMsgText { font-weight: 700; font-size: 14px; }
-  .weekMsgTextBig { font-weight: 800; font-size: 18px; }
+  .weekInfo{ margin-top:10px; padding:10px; border-radius:12px; border:1px dashed #cfcfcf; background:#fff; }
+  .weekMsgText{ font-weight:700; font-size:14px; }
+  .weekMsgTextBig{ font-weight:800; font-size:18px; }
 
   /* ADMIN */
-  .adminBox { border-color:#bde5bd; background:#f5fff5; }
-  .adminTitleRow { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .adminBox{ border-color:#bde5bd; background:#f5fff5; }
+  .adminTitleRow{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+
+  /* ===== KAFELKI (strona wejściowa) ===== */
+  .tilesWrap{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .tile{
+    width: 100%;
+    text-align:left;
+    border-radius: 16px;
+    padding: 14px;
+    border: 1px solid #dcdcdc;
+    background: #ffffff;
+    box-shadow: 0 8px 22px rgba(0,0,0,.06);
+    transition: transform .08s ease, box-shadow .08s ease, border-color .08s ease;
+  }
+  .tile:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(0,0,0,.08);
+    border-color: #cfcfcf;
+    background:#fff;
+  }
+  .tileTitleRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+  }
+  .tileTitle{
+    font-weight: 800;
+    font-size: 16px;
+    margin: 0;
+  }
+  .tileIcon{
+    font-size: 22px;
+    line-height: 1;
+  }
+  .tileDesc{
+    margin-top: 8px;
+    color:#666;
+    font-size: 12px;
+  }
+
+  .tileGreen{ border-color: rgba(46,125,50,.25); background: rgba(46,125,50,.06); }
+  .tileBlue{ border-color: rgba(25,118,210,.22); background: rgba(25,118,210,.05); }
+  .tileAmber{ border-color: rgba(245,124,0,.22); background: rgba(245,124,0,.05); }
+  .tileGray{ border-color: rgba(120,120,120,.25); background: rgba(120,120,120,.05); }
 
   /* ===== PIN modal (ładniejsze i nic nie wystaje) ===== */
   .modalOverlay{
@@ -68,7 +162,7 @@
     padding:18px 18px 14px;
     width:min(440px, 100%);
     box-shadow:0 16px 55px rgba(0,0,0,.28);
-    overflow:hidden; /* żeby nic nie wychodziło poza ramkę */
+    overflow:hidden; /* nic nie wyjdzie poza ramkę */
   }
   .modalTitle{
     font-weight:800;
@@ -92,7 +186,7 @@
   }
   .modalCard input:focus{
     border-color:#2e7d32;
-    box-shadow: inset 0 0 0 3px rgba(46,125,50,.14); /* ring do środka, nie na zewnątrz */
+    box-shadow: inset 0 0 0 3px rgba(46,125,50,.14); /* ring do środka */
   }
   .modalActions{
     display:flex;
@@ -105,32 +199,72 @@
     border-radius:12px;
   }
 
-  /* WAŻNE: hidden musi wygrywać zawsze */
+  /* hidden musi zawsze wygrywać */
   .hidden { display:none !important; }
 </style>
 </head>
 
 <body>
 
-<h1>
-  Punkty Julka
-  <span id="appVer" class="tag"></span>
-</h1>
+<div class="headerHero">
+  <h1>
+    Punkty Julka
+    <span id="appVer" class="tag"></span>
+  </h1>
+  <div class="muted">Szybki dostęp: Julek / Rodzic + dokumenty (PDF).</div>
+</div>
 
-<div id="login" class="box">
-  <h2>Wybierz panel</h2>
-  <div class="row">
-    <button onclick="loginJulek()">Julek</button>
-    <button onclick="loginRodzic()">Rodzic</button>
-    <button onclick="resetAllData()" title="Czyści CAŁĄ bazę (dni/logi/odwołania/weekend/meta).">RESET (start od zera)</button>
+<!-- ====== STRONA WEJŚCIOWA ====== -->
+<div id="login">
+
+  <!-- WYBÓR PANELU (osobna ramka) -->
+  <div class="box">
+    <h2>Wybierz panel</h2>
+
+    <div class="tilesWrap">
+      <button class="tile tileGreen" onclick="loginJulek()">
+        <div class="tileTitleRow">
+          <div class="tileTitle">Julek</div>
+          <div class="tileIcon">👦</div>
+        </div>
+        <div class="tileDesc">Podgląd punktów i możliwość odwołań (tylko od minusów, w dniu przyznania).</div>
+      </button>
+
+      <button class="tile tileBlue" onclick="loginRodzic()">
+        <div class="tileTitleRow">
+          <div class="tileTitle">Rodzic</div>
+          <div class="tileIcon">👨‍👩‍👦</div>
+        </div>
+        <div class="tileDesc">Dodawanie/odejmowanie godzin, oceny, obowiązki, odwołania i historia.</div>
+      </button>
+    </div>
+
+    <div class="muted" style="margin-top:10px;">Uwaga: PINy działają lokalnie w tej stronie.</div>
   </div>
 
-  <div class="row" style="margin-top:8px;">
-    <button onclick="openPdf('UMOWA_JULEK_system_godzin.pdf')">Regulamin (PDF)</button>
-    <button onclick="openPdf('TABELA_PUNKTOW_JULEK.pdf')">Tabela punktów (PDF)</button>
+  <!-- DOKUMENTY (POZA RAMKĄ WYBORU PANELU) -->
+  <div class="box" style="background:#fff;">
+    <h2>Dokumenty</h2>
+
+    <div class="tilesWrap">
+      <button class="tile tileAmber" onclick="openPdf('UMOWA_JULEK_system_godzin.pdf')">
+        <div class="tileTitleRow">
+          <div class="tileTitle">Regulamin (PDF)</div>
+          <div class="tileIcon">📄</div>
+        </div>
+        <div class="tileDesc">Zasady przyznawania/odejmowania godzin i odwołań.</div>
+      </button>
+
+      <button class="tile tileGray" onclick="openPdf('TABELA_PUNKTOW_JULEK.pdf')">
+        <div class="tileTitleRow">
+          <div class="tileTitle">Tabela punktów (PDF)</div>
+          <div class="tileIcon">📊</div>
+        </div>
+        <div class="tileDesc">Szybka ściąga: co ile punktów/godzin.</div>
+      </button>
+    </div>
   </div>
 
-  <div class="muted">Uwaga: PINy działają lokalnie w tej stronie.</div>
 </div>
 
 <!-- PIN modal (maskowane) -->
@@ -182,12 +316,15 @@
       <h3 style="margin:0;">Zmiany administracyjne</h3>
       <span class="muted">Dostęp tylko dla Kuby (PIN wymagany przy wejściu).</span>
     </div>
+
     <div class="row" style="margin-top:10px;">
       <button onclick="zamknijTydzien()">Zamknij tydzień</button>
       <button class="btnGreen" onclick="saveAndCloseAdmin()">Zapisz i zamknij zmiany administracyjne</button>
+      <button class="btnRed" onclick="resetAllDataAdmin()">RESET (start od zera)</button>
     </div>
+
     <div class="muted" style="margin-top:8px;">
-      Ten przycisk zapisuje stan zmian administracyjnych (meta) i zamyka sekcję bez ponownego podawania PINu.
+      RESET wymaga ponownego PINu + potwierdzenia.
     </div>
   </div>
 
@@ -284,7 +421,7 @@
 
 <script>
 /* ================== WERSJA ================== */
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.1";
 (function(){
   const v = document.getElementById("appVer");
   if(v) v.innerText = "v" + APP_VERSION;
@@ -364,7 +501,6 @@ function hidePinModal(){
   modal.classList.add("hidden");
   modal.hidden = true;
 }
-
 function askPinMasked(title){
   const input  = document.getElementById("pinInput");
   const okBtn  = document.getElementById("pinOk");
@@ -392,7 +528,7 @@ function askPinMasked(title){
 }
 
 /* ================== UI / LOGOWANIE ================== */
-let rodzic = "";
+let rodzic = ""; // "Kuba" / "Marlena"
 const loginBox = document.getElementById("login");
 const rodzicDiv = document.getElementById("rodzic");
 const julekDiv = document.getElementById("julek");
@@ -422,7 +558,6 @@ async function openAdmin(){
   if(rodzic !== "Kuba") return;
   const pin = await askPinMasked("PIN (Zmiany administracyjne):");
   if(pin === null) return;
-
   if(pin !== expectedPinForRodzic()){
     alert("Zły PIN");
     return;
@@ -926,6 +1061,7 @@ async function odwolanie(date, logId, v){
   alert("Odwołanie zapisane.");
 }
 
+/* Auto-akcept po terminie */
 async function processAutoAcceptAppeals(){
   const snap = await db.ref("odwolania").once("value");
   const nowIso = nowWarsawParts().isoDate;
@@ -1135,6 +1271,7 @@ async function zamknijTydzien(){
   await closeWeekIfNotClosed(wk, "manual", true);
 }
 
+/* Auto: piątek 18:00 Warsaw */
 async function checkAutoClose(){
   const p = nowWarsawParts();
   const isFriday = (p.weekday || "").toLowerCase().startsWith("pt");
@@ -1147,7 +1284,7 @@ async function checkAutoClose(){
   await closeWeekIfNotClosed(wk, "auto_friday_18", false);
 }
 
-/* ================== RETENCJA ================== */
+/* ================== RETENCJA: MAX 2 TYGODNIE ================== */
 async function purgeOldData(){
   const cutoff = isoDateShift(nowWarsawParts().isoDate, -14);
 
@@ -1175,11 +1312,18 @@ async function purgeOldData(){
   });
 }
 
-/* ================== RESET ================== */
-async function resetAllData(){
-  if(!confirm("RESET: wyczyści CAŁĄ bazę. Na pewno?")) return;
-  const pin = prompt("Podaj PIN Kuby, żeby potwierdzić RESET:");
-  if(pin !== "6978") return alert("Zły PIN. Reset anulowany.");
+/* ================== RESET (TYLKO ADMIN KUBA + PIN) ================== */
+async function resetAllDataAdmin(){
+  if(rodzic !== "Kuba") return;
+
+  const pin = await askPinMasked("PIN (RESET):");
+  if(pin === null) return;
+  if(pin !== expectedPinForRodzic()){
+    alert("Zły PIN. Reset anulowany.");
+    return;
+  }
+
+  if(!confirm("RESET: wyczyści CAŁĄ bazę (dni/log/odwołania/weekend/meta). Na pewno?")) return;
 
   await db.ref("dni").remove();
   await db.ref("log").remove();
