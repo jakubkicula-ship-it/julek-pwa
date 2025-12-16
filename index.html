@@ -192,17 +192,29 @@
     padding:9px 14px;
     border-radius:12px;
   }
-/* ===== NOTATKI ADMIN – OSOBNA SEKCJA ===== */
-.adminNotesStandalone{
-  max-width: 50%;
-}
 
-@media (max-width: 768px){
-  .adminNotesStandalone{
-    max-width: 100%;
+  /* ===== NOTATKI ADMIN – OSOBNA SEKCJA ===== */
+  .adminNotesStandalone{ max-width: 50%; }
+  @media (max-width: 768px){ .adminNotesStandalone{ max-width: 100%; } }
+
+  /* ===== KPI JULKA (duże liczby) ===== */
+  .julekSummaryRow{ display:flex; gap:14px; flex-wrap:wrap; }
+  .julekKpi{
+    flex:1 1 140px;
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:16px;
+    padding:14px 12px;
+    text-align:center;
+    background:#fff;
   }
-}
-
+  .julekKpiLabel{ font-weight:900; font-size:18px; }
+  .julekKpiVal{
+    font-weight:900;
+    font-size:44px;
+    line-height:1.05;
+    margin-top:6px;
+  }
+  @media(max-width:480px){ .julekKpiVal{ font-size:38px; } }
 </style>
 </head>
 
@@ -223,6 +235,7 @@
 <div id="login" class="box">
   <div class="muted">Wybierz kafelek:</div>
 
+  <!-- 1) TYLKO kafelki logowania -->
   <div class="dashWrap">
     <div class="tile tJulek" onclick="loginJulek()">
       <div class="tileIcon">👦</div>
@@ -234,8 +247,19 @@
       <div class="tileIcon">👨‍👩‍👦</div>
       <div class="tileTitle">Rodzic</div>
       <div class="tileDesc">Dodawanie/odejmowanie godzin</div>
-</div>
+    </div>
+  </div>
 
+  <!-- 2) NOTATKI od razu pod kafelkami logowania -->
+  <div class="box adminNotesStandalone">
+    <h3>📌 Notatki administratora</h3>
+    <div id="adminNotesPublic" class="muted">
+      Brak aktualnych notatek.
+    </div>
+  </div>
+
+  <!-- 3) Dopiero potem PDF-y (mniej ważne) -->
+  <div class="dashWrap">
     <div class="tile tPdf" onclick="openPdf('UMOWA_JULEK_system_godzin.pdf')">
       <div class="tileIcon">📄</div>
       <div class="tileTitle">Regulamin (PDF)</div>
@@ -247,18 +271,13 @@
       <div class="tileTitle">Tabela punktów (PDF)</div>
       <div class="tileDesc">Do odczytu</div>
     </div>
+
+    <div class="tile tPdf" onclick="openPdf('Instrukcja_obsługi.pdf')">
+      <div class="tileIcon">📘</div>
+      <div class="tileTitle">Instrukcja obsługi</div>
+      <div class="tileDesc">PDF – jak działa program</div>
+    </div>
   </div>
-<div class="tile tPdf" onclick="openPdf('Instrukcja_obsługi.pdf')">
-  <div class="tileIcon">📘</div>
-  <div class="tileTitle">Instrukcja obsługi</div>
-  <div class="tileDesc">PDF – jak działa program</div>
-</div>
-<div class="box adminNotesStandalone">
-  <h3>📌 Notatki administratora</h3>
-  <div id="adminNotesPublic" class="muted">
-    Brak aktualnych notatek.
-  </div>
-</div>
 
   <div class="muted" style="margin-top:12px;">
     PINy działają lokalnie w tej stronie. RESET jest tylko w zmianach administracyjnych Kuby.
@@ -283,11 +302,12 @@
 
   <div class="box">
     <div><b>Zalogowany rodzic:</b> <span id="rodzicName"></span></div>
+
     <div class="weekSummaryBig" style="margin-top:10px;">
-  <div>Dziś: <b><span id="todayR">0</span> h</b></div>
-  <div>Tydzień: <b><span id="weekR">0</span> h</b></div>
-  <div>Weekend: <b><span id="weekendR">0</span> h</b></div>
-</div>
+      <div>Dziś: <b><span id="todayR">0</span> h</b></div>
+      <div>Tydzień: <b><span id="weekR">0</span> h</b></div>
+      <div>Weekend: <b><span id="weekendR">0</span> h</b></div>
+    </div>
 
     <div class="row" style="margin-top:8px;">
       <button id="btnAdmin" class="hidden" onclick="openAdmin()">Zmiany administracyjne</button>
@@ -318,27 +338,25 @@
     <div class="adminTitleRow">
       <h3 style="margin:0;">Zmiany administracyjne</h3>
       <span class="muted">Dostęp tylko dla Kuby (PIN wymagany przy wejściu).</span>
-<hr>
-
-<h3>Notatki administratora</h3>
-
-<textarea id="adminNoteInput"
-  placeholder="Wpisz notatkę widoczną na ekranie logowania..."
-  style="width:100%;min-height:80px;padding:10px;border-radius:10px;"></textarea>
-
-<div class="row" style="margin-top:8px;">
-  <button onclick="addAdminNote()" class="btnGreen">Dodaj notatkę</button>
-</div>
-
-<div id="adminNotesAdmin" style="margin-top:12px;"></div>
-
     </div>
+
+    <hr>
+
+    <h3>Notatki administratora</h3>
+
+    <textarea id="adminNoteInput"
+      placeholder="Wpisz notatkę widoczną na ekranie logowania..."
+      style="width:100%;min-height:80px;padding:10px;border-radius:10px;"></textarea>
+
+    <div class="row" style="margin-top:8px;">
+      <button onclick="addAdminNote()" class="btnGreen">Dodaj notatkę</button>
+    </div>
+
+    <div id="adminNotesAdmin" style="margin-top:12px;"></div>
 
     <div class="row" style="margin-top:10px;">
       <button onclick="zamknijTydzien()">Zamknij tydzień</button>
-
       <button class="btnRed" onclick="resetAllDataFromAdmin()">RESET (start od zera)</button>
-
       <button class="btnGreen" onclick="saveAndCloseAdmin()">Zapisz i zamknij zmiany administracyjne</button>
     </div>
 
@@ -405,9 +423,7 @@
 
   <div class="box">
     <h3>Aktualny tydzień – log (rodzic)</h3>
-<button class="smallbtn" onclick="toggleWeekLogs()">
-  Pozostałe dni tygodnia
-</button>
+    <button class="smallbtn" onclick="toggleWeekLogs()">Pozostałe dni tygodnia</button>
 
     <div class="muted">Usuwanie: tylko wpisy z dzisiaj i tylko autor wpisu (drugi rodzic ma przycisk nieaktywny).</div>
     <ul id="logR"></ul>
@@ -424,7 +440,20 @@
 <!-- ================= PANEL JULEK ================= -->
 <div id="julek" class="panel">
   <div class="box">
-    <div class="muted">Dziś: <b><span id="todayJ">0</span> h</b> · Tydzień: <b><span id="weekJ">0</span> h</b> · Weekend: <b><span id="weekendJ">0</span> h</b></div>
+    <div class="julekSummaryRow">
+      <div class="julekKpi">
+        <div class="julekKpiLabel">Dziś</div>
+        <div class="julekKpiVal"><span id="todayJ">0</span>h</div>
+      </div>
+      <div class="julekKpi">
+        <div class="julekKpiLabel">Tydzień</div>
+        <div class="julekKpiVal"><span id="weekJ">0</span>h</div>
+      </div>
+      <div class="julekKpi">
+        <div class="julekKpiLabel">Weekend</div>
+        <div class="julekKpiVal"><span id="weekendJ">0</span>h</div>
+      </div>
+    </div>
   </div>
 
   <div id="weekendInfoJulek" class="box hidden">
@@ -434,9 +463,7 @@
 
   <div class="box">
     <h3>Aktualny tydzień – za co</h3>
-<button class="smallbtn" onclick="toggleWeekLogs()">
-  Pozostałe dni tygodnia
-</button>
+    <button class="smallbtn" onclick="toggleWeekLogs()">Pozostałe dni tygodnia</button>
 
     <ul id="logJ"></ul>
     <div class="muted">Odwołanie: tylko od punktów ujemnych, tylko w dniu przyznania i tylko raz na wpis.</div>
@@ -445,7 +472,6 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-
 
 <script>
 /* ================== HELPERS ================== */
@@ -469,7 +495,7 @@ function toggleWeekLogs(){
 }
 
 /* ================== WERSJA ================== */
-const APP_VERSION = "1.0.4";
+const APP_VERSION = "1.0.5";
 (function(){
   const v = document.getElementById("appVer");
   if(v) v.innerText = "v" + APP_VERSION;
@@ -490,7 +516,6 @@ const APP_VERSION = "1.0.4";
 })();
 
 function forceDesktopUpdate(){
-  // PC: odpinamy service workery (żeby przestały mieszać) i twardy reload
   if("serviceWorker" in navigator){
     navigator.serviceWorker.getRegistrations().then(regs=>{
       regs.forEach(r=>r.unregister());
@@ -537,8 +562,7 @@ function nowWarsawParts() {
   const isoDate = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   return {year,month,day,hour,minute,second,weekday,isoDate};
 }
- const dzis = nowWarsawParts().isoDate;
-
+function todayIso(){ return nowWarsawParts().isoDate; }
 
 function isoDateShift(baseIso, days){
   const dt = new Date(`${baseIso}T12:00:00Z`);
@@ -546,19 +570,25 @@ function isoDateShift(baseIso, days){
   return dt.toISOString().slice(0,10);
 }
 function endOfNextDayDeadlineDay() {
-  return isoDateShift(dzis, 1);
+  return isoDateShift(todayIso(), 1);
 }
 
-/* ISO week key */
-function isoWeekKeyWarsaw() {
-  const p = nowWarsawParts();
-  const dt = new Date(`${p.isoDate}T12:00:00Z`);
-  const t = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+/* ISO week key (pełna poprawna wersja) */
+function isoWeekKeyFromIsoDate(isoDate){
+  const dt = new Date(`${isoDate}T12:00:00Z`);
+  const t = new Date(Date.UTC(
+    dt.getUTCFullYear(),
+    dt.getUTCMonth(),
+    dt.getUTCDate()
+  ));
   const dayNum = t.getUTCDay() || 7;
   t.setUTCDate(t.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(t.getUTCFullYear(),0,1));
   const weekNo = Math.ceil((((t - yearStart) / 86400000) + 1) / 7);
   return `${t.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
+}
+function isoWeekKeyWarsaw(){
+  return isoWeekKeyFromIsoDate(todayIso());
 }
 
 /* ================== PIN MODAL (maskowane) ================== */
@@ -704,7 +734,8 @@ const oceny3={np:-1,1:-3,2:-3,3:-2,4:1,5:3,6:4};
 
 /* ================== ZAPIS / DUBLETY ================== */
 async function hasDuplicateToday(category){
-  const snap = await db.ref("log/"+dzis).once("value");
+  const d = todayIso();
+  const snap = await db.ref("log/"+d).once("value");
   let found = null;
   snap.forEach(ch=>{
     const v = ch.val();
@@ -717,6 +748,9 @@ async function hasDuplicateToday(category){
 
 async function zapis(h, opis, category, checkDuplicate){
   if(!rodzic) return alert("Najpierw zaloguj rodzica.");
+
+  const d = todayIso();
+
   if(checkDuplicate){
     const dup = await hasDuplicateToday(category);
     if(dup){
@@ -731,8 +765,8 @@ async function zapis(h, opis, category, checkDuplicate){
   const txt = `${opis} (${rodzic})`;
   const ts = Date.now();
 
-  await db.ref("dni/"+dzis).transaction(v=>(v||0)+h);
-  await db.ref("log/"+dzis).push({
+  await db.ref("dni/"+d).transaction(v=>(v||0)+h);
+  await db.ref("log/"+d).push({
     h, opis: txt, rodzic,
     category: category || "",
     ts
@@ -788,12 +822,24 @@ genGrades("angielski","Angielski",oceny3);
 genGrades("niemiecki","Niemiecki",oceny3);
 genGrades("historia","Historia",oceny3);
 
-/* ================== PODSUMOWANIA ================== */
+/* ================== PODSUMOWANIA (NAPRAWA: tydzień) ================== */
 db.ref("dni").on("value",s=>{
-  let t = s.child(dzis).val()||0, w=0;
-  s.forEach(d=>w+= (d.val()||0));
-  setText("todayR", t); setText("todayJ", t);
-  setText("weekR", w); setText("weekJ", w);
+  const today = todayIso();
+  const curWeekKey = isoWeekKeyFromIsoDate(today);
+
+  const todayVal = s.child(today).val() || 0;
+
+  let weekVal = 0;
+  s.forEach(d=>{
+    const date = d.key;
+    const val = Number(d.val() || 0);
+    if(date && isoWeekKeyFromIsoDate(date) === curWeekKey){
+      weekVal += val;
+    }
+  });
+
+  setText("todayR", todayVal); setText("todayJ", todayVal);
+  setText("weekR", weekVal);  setText("weekJ", weekVal);
 });
 
 db.ref("weekend").on("value",s=>{
@@ -863,7 +909,6 @@ async function setWeekendSummary(hours, weekKey, reason){
 }
 
 /* ================== CACHE ================== */
-
 let logsCache = {};
 let appealsByLog = {};
 let appealsList = [];
@@ -959,8 +1004,8 @@ function renderParentLogs(){
   }
 
   dates.forEach(date=>{
-  const today = nowWarsawParts().isoDate;
-if(!showWholeWeekLogs && date !== today) return;
+    const today = todayIso();
+    if(!showWholeWeekLogs && date !== today) return;
 
     const dayObj = logsCache[date] || {};
     const keys = Object.keys(dayObj).sort((a,b)=>(dayObj[a]?.ts||0)-(dayObj[b]?.ts||0));
@@ -989,7 +1034,7 @@ if(!showWholeWeekLogs && date !== today) return;
       if(!rodzic){
         del.disabled = true;
         del.title = "Zaloguj się jako rodzic.";
-      } else if(date !== dzis){
+      } else if(date !== todayIso()){
         del.disabled = true;
         del.title = "Można usuwać tylko dzisiejsze wpisy.";
       } else if(v.rodzic !== rodzic){
@@ -1021,8 +1066,8 @@ function renderJulekLogs(){
   }
 
   dates.forEach(date=>{
-  const today = nowWarsawParts().isoDate;
-if(!showWholeWeekLogs && date !== today) return;
+    const today = todayIso();
+    if(!showWholeWeekLogs && date !== today) return;
 
     const dayObj = logsCache[date] || {};
     const keys = Object.keys(dayObj).sort((a,b)=>(dayObj[a]?.ts||0)-(dayObj[b]?.ts||0));
@@ -1070,7 +1115,7 @@ if(!showWholeWeekLogs && date !== today) return;
       if(v.h >= 0){
         btn.onclick = ()=>alert("Bez sensu 🙂 To jest na Twoją korzyść. Od dodatnich punktów się nie odwołuje.");
       } else {
-        if(date !== dzis){
+        if(date !== todayIso()){
           btn.disabled = true;
           btn.title = "Odwołanie tylko w dniu przyznania punktów.";
         } else if(appeal){
@@ -1092,7 +1137,7 @@ if(!showWholeWeekLogs && date !== today) return;
 /* ================== USUWANIE ================== */
 async function usunWpisDzis(date, logId, v){
   if(!rodzic) return alert("Najpierw zaloguj rodzica.");
-  if(date !== dzis) return alert("Można usuwać tylko dzisiejsze wpisy.");
+  if(date !== todayIso()) return alert("Można usuwać tylko dzisiejsze wpisy.");
   if(v.rodzic !== rodzic) return alert("Może usunąć tylko autor wpisu.");
 
   if(!confirm("Usunąć ten wpis? (tylko dzisiaj)")) return;
@@ -1114,7 +1159,7 @@ async function usunWpisDzis(date, logId, v){
 
 /* ================== ODWOŁANIA ================== */
 async function odwolanie(date, logId, v){
-  if(date !== dzis) return alert("Odwołanie tylko w dniu przyznania punktów.");
+  if(date !== todayIso()) return alert("Odwołanie tylko w dniu przyznania punktów.");
   if(v.h >= 0){
     alert("Od dodatnich punktów nie ma sensu się odwoływać 🙂");
     return;
@@ -1147,7 +1192,7 @@ async function odwolanie(date, logId, v){
 
 async function processAutoAcceptAppeals(){
   const snap = await db.ref("odwolania").once("value");
-  const nowIso = nowWarsawParts().isoDate;
+  const nowIso = todayIso();
 
   const jobs = [];
   snap.forEach(ch=>{
@@ -1201,7 +1246,7 @@ function renderParentAppeals(){
     return;
   }
 
-  const nowIso = nowWarsawParts().isoDate;
+  const nowIso = todayIso();
 
   appealsList.forEach(o=>{
     const wrap = document.createElement("div");
@@ -1368,7 +1413,7 @@ async function checkAutoClose(){
 
 /* ================== RETENCJA ================== */
 async function purgeOldData(){
-  const cutoff = isoDateShift(nowWarsawParts().isoDate, -14);
+  const cutoff = isoDateShift(todayIso(), -14);
 
   const dniSnap = await db.ref("dni").once("value");
   dniSnap.forEach(d=>{
@@ -1424,6 +1469,7 @@ setInterval(()=>{
 purgeOldData();
 processAutoAcceptAppeals();
 checkAutoClose();
+
 /* ================== NOTATKI ADMINISTRATORA ================== */
 const notesRef = db.ref("meta/adminNotes");
 
@@ -1500,11 +1546,9 @@ openAdmin = async function(){
   await _openAdmin();
   if(rodzic==="Kuba") renderAdminNotes();
 };
-
-
 </script>
 
-<!-- Twój updateBtn (SW) zostawiam bez zmian -->
+<!-- SW update button -->
 <button id="updateBtn"
         style="position:fixed;bottom:10px;right:10px;
         background:#d4f8d4;border:2px solid #2e7d32;
