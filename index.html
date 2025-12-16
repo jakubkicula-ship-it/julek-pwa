@@ -192,6 +192,17 @@
     padding:9px 14px;
     border-radius:12px;
   }
+/* ===== NOTATKI ADMIN – OSOBNA SEKCJA ===== */
+.adminNotesStandalone{
+  max-width: 50%;
+}
+
+@media (max-width: 768px){
+  .adminNotesStandalone{
+    max-width: 100%;
+  }
+}
+
 </style>
 </head>
 
@@ -223,16 +234,7 @@
       <div class="tileIcon">👨‍👩‍👦</div>
       <div class="tileTitle">Rodzic</div>
       <div class="tileDesc">Dodawanie/odejmowanie godzin</div>
-<hr>
-
-<div class="box">
-  <h3>📌 Notatki administratora</h3>
-  <div id="adminNotesPublic" class="muted">
-    Brak aktualnych notatek.
-  </div>
 </div>
-
-    </div>
 
     <div class="tile tPdf" onclick="openPdf('UMOWA_JULEK_system_godzin.pdf')">
       <div class="tileIcon">📄</div>
@@ -250,6 +252,12 @@
   <div class="tileIcon">📘</div>
   <div class="tileTitle">Instrukcja obsługi</div>
   <div class="tileDesc">PDF – jak działa program</div>
+</div>
+<div class="box adminNotesStandalone">
+  <h3>📌 Notatki administratora</h3>
+  <div id="adminNotesPublic" class="muted">
+    Brak aktualnych notatek.
+  </div>
 </div>
 
   <div class="muted" style="margin-top:12px;">
@@ -275,7 +283,12 @@
 
   <div class="box">
     <div><b>Zalogowany rodzic:</b> <span id="rodzicName"></span></div>
-    <div class="muted">Dziś: <b><span id="todayR">0</span> h</b> · Tydzień: <b><span id="weekR">0</span> h</b> · Weekend: <b><span id="weekendR">0</span> h</b></div>
+    <div class="weekSummaryBig" style="margin-top:10px;">
+  <div>Dziś: <b><span id="todayR">0</span> h</b></div>
+  <div>Tydzień: <b><span id="weekR">0</span> h</b></div>
+  <div>Weekend: <b><span id="weekendR">0</span> h</b></div>
+</div>
+
     <div class="row" style="margin-top:8px;">
       <button id="btnAdmin" class="hidden" onclick="openAdmin()">Zmiany administracyjne</button>
       <span class="muted">Auto-zamknięcie: piątek 18:00 (Warszawa) — wykona się, gdy ktoś ma otwartą apkę albo wejdzie po czasie.</span>
@@ -392,6 +405,10 @@
 
   <div class="box">
     <h3>Aktualny tydzień – log (rodzic)</h3>
+<button class="smallbtn" onclick="toggleWeekLogs()">
+  Pozostałe dni tygodnia
+</button>
+
     <div class="muted">Usuwanie: tylko wpisy z dzisiaj i tylko autor wpisu (drugi rodzic ma przycisk nieaktywny).</div>
     <ul id="logR"></ul>
   </div>
@@ -417,6 +434,10 @@
 
   <div class="box">
     <h3>Aktualny tydzień – za co</h3>
+<button class="smallbtn" onclick="toggleWeekLogs()">
+  Pozostałe dni tygodnia
+</button>
+
     <ul id="logJ"></ul>
     <div class="muted">Odwołanie: tylko od punktów ujemnych, tylko w dniu przyznania i tylko raz na wpis.</div>
   </div>
@@ -425,7 +446,28 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
+
 <script>
+/* ================== HELPERS ================== */
+function escapeHtml(str){
+  return (str||"")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+}
+
+function setText(id, val){
+  const el = document.getElementById(id);
+  if(el) el.innerText = String(val);
+}
+
+/* toggle widoku logów */
+let showWholeWeekLogs = false;
+function toggleWeekLogs(){
+  showWholeWeekLogs = !showWholeWeekLogs;
+  renderAll();
+}
+
 /* ================== WERSJA ================== */
 const APP_VERSION = "1.0.3";
 (function(){
@@ -495,7 +537,8 @@ function nowWarsawParts() {
   const isoDate = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   return {year,month,day,hour,minute,second,weekday,isoDate};
 }
-const dzis = nowWarsawParts().isoDate;
+ const dzis = nowWarsawParts().isoDate;
+
 
 function isoDateShift(baseIso, days){
   const dt = new Date(`${baseIso}T12:00:00Z`);
@@ -820,6 +863,7 @@ async function setWeekendSummary(hours, weekKey, reason){
 }
 
 /* ================== CACHE ================== */
+
 let logsCache = {};
 let appealsByLog = {};
 let appealsList = [];
@@ -915,6 +959,9 @@ function renderParentLogs(){
   }
 
   dates.forEach(date=>{
+  const today = nowWarsawParts().isoDate;
+if(!showWholeWeekLogs && date !== today) return;
+
     const dayObj = logsCache[date] || {};
     const keys = Object.keys(dayObj).sort((a,b)=>(dayObj[a]?.ts||0)-(dayObj[b]?.ts||0));
     if(keys.length === 0) return;
@@ -974,6 +1021,9 @@ function renderJulekLogs(){
   }
 
   dates.forEach(date=>{
+  const today = nowWarsawParts().isoDate;
+if(!showWholeWeekLogs && date !== today) return;
+
     const dayObj = logsCache[date] || {};
     const keys = Object.keys(dayObj).sort((a,b)=>(dayObj[a]?.ts||0)-(dayObj[b]?.ts||0));
     if(keys.length === 0) return;
@@ -1451,17 +1501,7 @@ openAdmin = async function(){
   if(rodzic==="Kuba") renderAdminNotes();
 };
 
-/* ================== HELPERS ================== */
-function escapeHtml(str){
-  return (str||"")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;");
-}
-function setText(id, val){
-  const el = document.getElementById(id);
-  if(el) el.innerText = String(val);
-}
+
 </script>
 
 <!-- Twój updateBtn (SW) zostawiam bez zmian -->
