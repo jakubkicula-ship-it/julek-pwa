@@ -314,46 +314,6 @@
 <script src="./js/child.js"></script>
 <script src="./js/admin.js"></script>
 
-<!-- SW update button -->
-<button id="updateBtn"
-        style="position:fixed;bottom:10px;right:10px;
-        background:#d4f8d4;border:2px solid #2e7d32;
-        padding:10px;border-radius:10px;"
-        disabled>
-  Aplikacja aktualna
-</button>
-
-<script>
-let newWorker;
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
-  });
-
-  navigator.serviceWorker.getRegistration().then(reg => {
-    if (!reg) return;
-
-    reg.addEventListener('updatefound', () => {
-      newWorker = reg.installing;
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          const btn = document.getElementById('updateBtn');
-          btn.disabled = false;
-          btn.style.background = '#ffcccc';
-          btn.style.borderColor = '#c62828';
-          btn.innerText = 'Dostępna aktualizacja – kliknij';
-
-          btn.onclick = () => {
-            newWorker.postMessage({ action: 'skipWaiting' });
-          };
-        }
-      });
-    });
-  });
-}
-</script>
-
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
