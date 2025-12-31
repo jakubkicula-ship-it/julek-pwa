@@ -78,7 +78,7 @@
   </div>
 </div>
 
-<!-- PIN modal -->
+<!-- PIN modal (maskowane) -->
 <div id="pinModal" class="modalOverlay hidden" hidden>
   <div class="modalCard">
     <div id="pinTitle" class="modalTitle">PIN</div>
@@ -88,6 +88,217 @@
       <button id="pinCancel" class="smallbtn">Anuluj</button>
       <button id="pinOk" class="smallbtn">OK</button>
     </div>
+  </div>
+</div>
+
+<!-- ================= PANEL RODZIC ================= -->
+<div id="rodzic" class="panel">
+
+  <div class="box">
+    <div><b>Zalogowany rodzic:</b> <span id="rodzicName"></span></div>
+
+    <div class="weekSummaryBig" style="margin-top:10px;">
+      <div>Dziś: <b><span id="todayR">0</span> h</b></div>
+      <div>Tydzień: <b><span id="weekR">0</span> h</b></div>
+      <div>Weekend: <b><span id="weekendR">0</span> h</b></div>
+    </div>
+
+    <div class="row" style="margin-top:8px;">
+      <button id="btnAdmin" class="hidden" onclick="openAdmin()">Zmiany administracyjne</button>
+      <span class="muted">Auto-zamknięcie: piątek 18:00 (Warszawa) — wykona się, gdy ktoś ma otwartą apkę albo wejdzie po czasie.</span>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Menu</h3>
+    <div class="row">
+      <button onclick="showSection('secUzn')">Godziny uznaniowe</button>
+      <button onclick="showSection('secOceny')">Oceny</button>
+      <button onclick="showSection('secObow')">Obowiązki i zachowanie</button>
+      <button onclick="showSection(null)">Zwiń wszystko</button>
+
+      <button id="btnAppeals" class="btnGreen" onclick="toggleAppeals()">
+        Odwołania i historia <span id="appealsBadge" class="tag">0</span>
+      </button>
+
+      <button id="btnPointRequests" class="btnGreen" onclick="showSection('secPointReq')">
+        Wnioski o punkty <span id="pointReqBadge" class="tag">0</span>
+      </button>
+    </div>
+
+    <div id="weekendInfoParent" class="weekInfo hidden">
+      <div id="weekendInfoTextParent" class="weekMsgText"></div>
+      <div id="weekendInfoDateParent" class="muted"></div>
+    </div>
+  </div>
+
+  <div id="secAdmin" class="box adminBox hidden">
+    <div class="adminTitleRow">
+      <h3 style="margin:0;">Zmiany administracyjne</h3>
+      <span class="muted">Dostęp tylko dla Kuby (PIN wymagany przy wejściu).</span>
+    </div>
+
+    <hr>
+
+    <h3>Notatki administratora</h3>
+
+    <textarea id="adminNoteInput"
+      placeholder="Wpisz notatkę widoczną na ekranie logowania..."
+      style="width:100%;min-height:80px;padding:10px;border-radius:10px;"></textarea>
+
+    <div class="row" style="margin-top:8px;">
+      <button onclick="addAdminNote()" class="btnGreen">Dodaj notatkę</button>
+    </div>
+
+    <div id="adminNotesAdmin" style="margin-top:12px;"></div>
+
+    <hr>
+
+    <h3>Korekta godzin (ręczna)</h3>
+
+    <div class="box" style="max-width:520px;">
+      <div class="row" style="align-items:center;gap:10px;">
+        <button id="adminAdjMinus" class="smallbtn">−</button>
+
+        <div id="adminAdjValue"
+             style="min-width:110px;text-align:center;font-weight:bold;font-size:18px;
+                    padding:6px 10px;border-radius:10px;border:2px solid #2e7d32;background:#fff;">
+          0 h
+        </div>
+
+        <button id="adminAdjPlus" class="smallbtn">+</button>
+
+        <button id="adminAdjConfirm" class="btnGreen">Zatwierdź</button>
+      </div>
+
+      <div class="muted" style="margin-top:8px;">
+        Godziny zmieniasz tylko przyciskami + / −. Po „Zatwierdź” ma wyskoczyć okno na komentarz i zapis do logu (to zrobimy w admin.js).
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <button onclick="zamknijTydzien()">Zamknij tydzień</button>
+      <button class="btnRed" onclick="resetAllDataFromAdmin()">RESET (start od zera)</button>
+      <button class="btnGreen" onclick="saveAndCloseAdmin()">Zapisz i zamknij zmiany administracyjne</button>
+    </div>
+
+    <div class="muted" style="margin-top:8px;">
+      RESET jest dostępny tylko tutaj. Dodatkowo wymaga ponownego PINu Kuby.
+    </div>
+  </div>
+
+  <div id="secUzn" class="box hidden">
+    <h3>Godziny uznaniowe (komentarz obowiązkowy)</h3>
+    <div class="row">
+      <button onclick="uzn(1)">+1h</button>
+      <button onclick="uzn(2)">+2h</button>
+      <button onclick="uzn(-1)">-1h</button>
+      <button onclick="uzn(-2)">-2h</button>
+    </div>
+    <div class="muted">Po kliknięciu musisz wpisać: za co.</div>
+  </div>
+
+  <div id="secOceny" class="box hidden">
+    <h3>Oceny</h3>
+
+    <div class="box">
+      <h3 style="margin-top:0;">Polski</h3><div id="polski"></div>
+      <h3>Biologia</h3><div id="biologia"></div>
+      <h3>Geografia</h3><div id="geografia"></div>
+    </div>
+
+    <div class="box">
+      <h3 style="margin-top:0;">WF</h3><div id="wf"></div>
+      <h3>Technika</h3><div id="technika"></div>
+      <h3>Muzyka</h3><div id="muzyka"></div>
+      <h3>Informatyka</h3><div id="informatyka"></div>
+      <h3>Plastyka</h3><div id="plastyka"></div>
+    </div>
+
+    <div class="box">
+      <h3 style="margin-top:0;">Matematyka</h3><div id="matematyka"></div>
+      <h3>Angielski</h3><div id="angielski"></div>
+      <h3>Niemiecki</h3><div id="niemiecki"></div>
+      <h3>Historia</h3><div id="historia"></div>
+    </div>
+
+    <div class="muted">Tu działa ostrzeżenie, jeśli drugi rodzic już dał punkty za ten sam przedmiot i ocenę tego samego dnia.</div>
+  </div>
+
+  <div id="secObow" class="box hidden">
+    <h3>Obowiązki / Zachowanie (komentarz opcjonalny)</h3>
+    <div class="row">
+      <button onclick="obow( 1,'Obowiązki zrobione', 'obow_ok', false)">Obowiązki zrobione +1h</button>
+
+      <button onclick="obow( 4,'Pozytywna uwaga w szkole', 'uwaga_pos', false)">Pozytywna uwaga w szkole +4h</button>
+      <button onclick="obow(-4,'Negatywna uwaga w szkole', 'uwaga_neg', false)">Negatywna uwaga w szkole -4h</button>
+
+      <button onclick="obow(-2,'Obowiązki niezrobione', 'obow_no', false)">Obowiązki niezrobione -2h</button>
+      <button onclick="obow(-10,'Oszustwo', 'oszustwo', false)">Oszustwo -10h</button>
+
+      <button onclick="obow(-5,'Bicie / obrażanie Michała', 'agresja', true)">Bicie/obrażanie Michała -5h</button>
+      <button onclick="obow(-2,'Brak higieny', 'higiena', true)">Brak higieny -2h</button>
+      <button onclick="obow(-2,'Porządek w pokoju niezrobiony', 'pokoj', true)">Porządek w pokoju -2h</button>
+    </div>
+    <div class="muted">Komentarz opcjonalny: po kliknięciu możesz dopisać szczegół. Dublety sprawdzamy tylko dla agresji/higieny/pokoju.</div>
+  </div>
+
+  <div class="box">
+    <h3>Aktualny tydzień – log (rodzic)</h3>
+    <button class="smallbtn" onclick="toggleWeekLogs()">Pozostałe dni tygodnia</button>
+
+    <div class="muted">Usuwanie: tylko wpisy z dzisiaj i tylko autor wpisu (drugi rodzic ma przycisk nieaktywny).</div>
+    <ul id="logR"></ul>
+  </div>
+
+  <div id="secPointReq" class="box hidden">
+    <h3>Wnioski o punkty (rodzic)</h3>
+    <div class="muted">Tu pojawią się wnioski Julka wraz z przyciskami „Zaakceptuj / Odrzuć”.</div>
+    <div id="pointReqRodzic"></div>
+  </div>
+
+  <div id="secAppeals" class="box hidden">
+    <h3>Odwołania Julka (rodzic) + historia</h3>
+    <div class="muted">Decyzja do końca następnego dnia. Po terminie odwołanie auto-zaakceptowane.</div>
+    <div id="odwolaniaRodzic"></div>
+  </div>
+
+</div>
+
+<!-- ================= PANEL JULEK ================= -->
+<div id="julek" class="panel">
+  <div class="box">
+    <div class="julekSummaryRow">
+      <div class="julekKpi">
+        <div class="julekKpiLabel">Dziś</div>
+        <div class="julekKpiVal"><span id="todayJ">0</span>h</div>
+      </div>
+      <div class="julekKpi">
+        <div class="julekKpiLabel">Tydzień</div>
+        <div class="julekKpiVal"><span id="weekJ">0</span>h</div>
+      </div>
+      <div class="julekKpi">
+        <div class="julekKpiLabel">Weekend</div>
+        <div class="julekKpiVal"><span id="weekendJ">0</span>h</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="weekendInfoJulek" class="box hidden">
+    <div id="weekendInfoTextJulek" class="weekMsgTextBig"></div>
+    <div id="weekendInfoDateJulek" class="muted"></div>
+  </div>
+
+  <div class="box">
+    <h3>Aktualny tydzień – za co</h3>
+
+    <div class="row" style="margin-bottom:8px;">
+      <button class="btnGreen" onclick="wniosekOPunkt()">Wniosek o punkt</button>
+      <button class="smallbtn" onclick="toggleWeekLogs()">Pozostałe dni tygodnia</button>
+    </div>
+
+    <ul id="logJ"></ul>
+    <div class="muted">Odwołanie: tylko od punktów ujemnych, tylko w dniu przyznania i tylko raz na wpis.</div>
   </div>
 </div>
 
@@ -103,7 +314,46 @@
 <script src="./js/child.js"></script>
 <script src="./js/admin.js"></script>
 
-<!-- Service Worker – rejestracja -->
+<!-- SW update button -->
+<button id="updateBtn"
+        style="position:fixed;bottom:10px;right:10px;
+        background:#d4f8d4;border:2px solid #2e7d32;
+        padding:10px;border-radius:10px;"
+        disabled>
+  Aplikacja aktualna
+</button>
+
+<script>
+let newWorker;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (!reg) return;
+
+    reg.addEventListener('updatefound', () => {
+      newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          const btn = document.getElementById('updateBtn');
+          btn.disabled = false;
+          btn.style.background = '#ffcccc';
+          btn.style.borderColor = '#c62828';
+          btn.innerText = 'Dostępna aktualizacja – kliknij';
+
+          btn.onclick = () => {
+            newWorker.postMessage({ action: 'skipWaiting' });
+          };
+        }
+      });
+    });
+  });
+}
+</script>
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
