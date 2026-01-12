@@ -3,7 +3,7 @@
 <head><!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2e7d32">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192v2.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Zadania Julka">
@@ -314,15 +314,13 @@
 <script src="./js/child.js"></script>
 <script src="./js/admin.js"></script>
 
+<!--
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('SW zarejestrowany:', reg.scope))
-      .catch(err => console.error('SW błąd:', err));
-  });
+  navigator.serviceWorker.register('sw.js');
 }
 </script>
+-->
 
 </body>
 </html>
