@@ -57,7 +57,7 @@ function sortedDates(obj){
 }
 
 /* ================== WERSJA ================== */
-const APP_VERSION = "2.0.1";
+const APP_VERSION = "2.0.2";
 (()=>{
   const v = document.getElementById("appVer");
   if(v) v.innerText = "v" + APP_VERSION;
@@ -654,3 +654,4 @@ window.addEventListener("load", function(){
     window.initAdminPublicNotes();
   }
 });
+
