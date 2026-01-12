@@ -155,9 +155,9 @@
   };
 
   /* ================== OCENY ================== */
-  const oceny1 = { np:-2, 1:-3, 2:-2, 3:-0.5, 4:1, 5:2, 6:3 };
-  const oceny2 = { np:-1, bs:-1, 1:-2, 2:-3, 3:-0.5, 4:1, 5:1.5, 6:2 };
-  const oceny3 = { np:-1, 1:-3, 2:-3, 3:-2, 4:1, 5:3, 6:4 };
+   const oceny1 = { np:-5, 1:-5, 2:-2, 3:-0.5, 4:1, 5:2, 6:3 };
+  const oceny2 = { np:-5, bs:-5, 1:-2, 2:-1, 3:-0.5, 4:1, 5:1.5, 6:2 };
+  const oceny3 = { np:-5, 1:-10, 2:-5, 3:-2, 4:1, 5:5, 6:10 };
 
   function genGrades(containerId, subject, map){
     const el = document.getElementById(containerId);
@@ -519,3 +519,4 @@
   })();
 
 })();
+
