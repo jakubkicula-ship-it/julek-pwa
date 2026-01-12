@@ -1,5 +1,5 @@
 // 🔴 ZWIĘKSZAJ TĘ WERSJĘ PRZY KAŻDEJ ZMIANIE INDEX.HTML
-const SW_VERSION = "1.0.5";
+const SW_VERSION = "2.0.1";
 const CACHE_NAME = "julek-cache-" + SW_VERSION;
 
 self.addEventListener("install", event => {
