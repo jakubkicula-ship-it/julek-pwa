@@ -11,6 +11,33 @@
 
   const getNotesRef = () => mustDb().ref("meta/adminNotes");
 
+  /* ================== HELPERS ================== */
+  function normStatus(st){
+    return (st || "").toString().trim().toLowerCase();
+  }
+
+  function getBusinessWeekKeyNowSafe(){
+    if(typeof window.businessWeekKeyNow === "function") return window.businessWeekKeyNow();
+    return "";
+  }
+
+  function getBusinessWeekKeyFromTsSafe(ts){
+    if(typeof window.businessWeekKeyFromTs === "function") return window.businessWeekKeyFromTs(ts);
+    return "";
+  }
+
+  function getBusinessWeekKeyFromIsoDateSafe(isoDate){
+    if(typeof window.businessWeekKeyFromIsoDate === "function") return window.businessWeekKeyFromIsoDate(isoDate);
+    return "";
+  }
+
+  function isSameBusinessWeek(dateIso, ts, weekKey){
+    if(!weekKey) return true;
+    if(ts) return getBusinessWeekKeyFromTsSafe(ts) === weekKey;
+    if(dateIso) return getBusinessWeekKeyFromIsoDateSafe(dateIso) === weekKey;
+    return false;
+  }
+
   /* ================== RĘCZNA KOREKTA GODZIN (UI + zapis) ================== */
   let adminAdjVal = 0;
 
@@ -47,7 +74,6 @@
     const category = "admin_adjust";
 
     try{
-      // zapis do systemu tak jak normalny wpis -> dni + log (spina saldo i odwołania)
       await window.zapis(h, opis, category, false);
 
       adminAdjVal = 0;
@@ -67,7 +93,6 @@
 
     if(!minusBtn || !plusBtn || !okBtn || !valBox) return;
 
-    // nie podpinaj drugi raz
     if(valBox.dataset.bound === "1") return;
     valBox.dataset.bound = "1";
 
@@ -92,7 +117,6 @@
       if(typeof window.renderAdminNotes === "function"){
         window.renderAdminNotes();
       }
-      // podpinamy przyciski korekty
       window.initAdminAdjustUI();
     }
   };
@@ -166,7 +190,6 @@
     const ta = document.getElementById("adminNoteInput");
     if(ta) ta.value = "";
 
-    // reset licznika korekty w UI (porządek)
     adminAdjVal = 0;
     renderAdminAdj();
 
@@ -204,38 +227,50 @@
     });
   };
 
-  /* ================== AUTO-AKCEPTACJA ODWOŁAŃ ================== */
-  window.processAutoAcceptAppeals = async function(){
-    const db = mustDb();
+  /* ===================================================== */
+  /* ============ ZAMYKANIE „WISZĄCYCH” ODWOŁAŃ ============ */
+  /* ===================================================== */
+  async function closePendingAppealsOnWeekClose(db, weekKey){
     const snap = await db.ref("odwolania").once("value");
-    const nowIso = (typeof window.todayIso === "function") ? window.todayIso() : "";
+    if(!snap.exists()) return;
 
+    const now = Date.now();
     const jobs = [];
+
     snap.forEach(ch=>{
-      const o = ch.val();
-      if(!o) return;
-      if(o.status !== "pending") return;
-      if(!o.deadlineDay) return;
-      if(nowIso && nowIso <= o.deadlineDay) return;
-      jobs.push({ key: ch.key, o });
+      const o = ch.val() || {};
+      if(normStatus(o.status) !== "pending") return;
+
+      const dateIso = (o.data || "").toString();
+      const ts = Number(o.createdAt || 0);
+
+      if(!isSameBusinessWeek(dateIso, ts, weekKey)) return;
+
+      jobs.push({
+        key: ch.key,
+        dateIso,
+        h: Number(o.h || 0)
+      });
     });
 
     for(const j of jobs){
       const cur = (await db.ref("odwolania/"+j.key).once("value")).val();
-      if(!cur || cur.status !== "pending") continue;
+      if(!cur || normStatus(cur.status) !== "pending") continue;
 
-      await db.ref("dni/"+cur.data).transaction(x=>(x||0) - (cur.h||0));
+      if(j.dateIso){
+        await db.ref("dni/"+j.dateIso).transaction(x => (x||0) - j.h);
+      }
 
       await db.ref("odwolania/"+j.key).update({
-        status:"accepted_auto",
-        kto:"AUTO",
-        decyzjaAt: Date.now(),
-        komentarz:"Zaakceptowane automatycznie z powodu braku rozpatrzenia przez rodzica w umownym czasie."
+        status: "accepted_auto",
+        kto: "system_weekclose",
+        decyzjaAt: now,
+        komentarz: "Zamknięcie tygodnia – odwołanie zaliczone na plus."
       });
     }
-  };
+  }
 
-  /* ================== ZAMKNIĘCIE TYGODNIA (PRZYCISK) ================== */
+  /* ================== ZAMKNIĘCIE TYGODNIA (LOCK) ================== */
   async function acquireCloseLock(db){
     const lockRef = db.ref("meta/closeLock");
     const now = Date.now();
@@ -247,7 +282,29 @@
   }
 
   async function releaseCloseLock(db){
-    await db.ref("meta/closeLock").remove();
+    try{ await db.ref("meta/closeLock").remove(); }catch(_){}
+  }
+
+  async function rebuildDniFromLogsSnapshot(db, logSnap){
+    const map = {};
+
+    if(logSnap.exists()){
+      logSnap.forEach(day=>{
+        const date = day.key;
+        let sum = 0;
+
+        day.forEach(item=>{
+          const v = item.val() || {};
+          sum += Number(v.h || 0);
+        });
+
+        if(sum !== 0){
+          map[date] = sum;
+        }
+      });
+    }
+
+    await db.ref("dni").set(map);
   }
 
   async function closeWeek(db, weekKey, reason){
@@ -255,27 +312,45 @@
     if(!got) return alert("Ktoś właśnie zamyka tydzień. Spróbuj za chwilę.");
 
     try{
-      const dniSnap = await db.ref("dni").once("value");
+      const logSnap = await db.ref("log").once("value");
 
       let sum = 0;
-      if(dniSnap.exists()){
-        dniSnap.forEach(d=>{
-          const date = d.key;
-          const val = Number(d.val() || 0);
-          if(!date) return;
+      const toDelete = [];
 
-          if(typeof window.isoWeekKeyFromIsoDate === "function" && weekKey){
-            if(window.isoWeekKeyFromIsoDate(date) === weekKey) sum += val;
-          } else {
-            sum += val;
-          }
+      if(logSnap.exists()){
+        logSnap.forEach(day=>{
+          const date = day.key;
+
+          day.forEach(item=>{
+            const v = item.val() || {};
+            const ts = Number(v.ts || 0);
+
+            if(isSameBusinessWeek(date, ts, weekKey)){
+              sum += Number(v.h || 0);
+              toDelete.push({ date, key: item.key });
+            }
+          });
         });
       }
 
       await db.ref("weekend").set(sum);
 
-      await db.ref("dni").remove();
-      await db.ref("log").remove();
+      for(const row of toDelete){
+        await db.ref(`log/${row.date}/${row.key}`).remove();
+      }
+
+      const logSnapAfter = await db.ref("log").once("value");
+      if(logSnapAfter.exists()){
+        for(const date of Object.keys(logSnapAfter.val() || {})){
+          const one = await db.ref(`log/${date}`).once("value");
+          if(!one.exists()){
+            await db.ref(`log/${date}`).remove().catch(()=>{});
+          }
+        }
+      }
+
+      const logSnapRemain = await db.ref("log").once("value");
+      await rebuildDniFromLogsSnapshot(db, logSnapRemain);
 
       await db.ref("meta/lastCloseWeekKey").set(weekKey || "");
       await db.ref("meta/lastCloseReason").set(reason || "");
@@ -286,17 +361,26 @@
     }
   }
 
+  /* ================== ZAMKNIĘCIE TYGODNIA (PRZYCISK) ================== */
   window.zamknijTydzien = async function(){
     if(window.rodzic !== "Kuba") return alert("Tylko Kuba może zamknąć tydzień.");
-    if(!confirm("Zamknąć tydzień? To przepisze wynik na 'Weekend' i wyczyści dni/logi.")) return;
+    if(!confirm("Zamknąć tydzień? To przepisze wynik na 'Weekend' i zamknie tylko bieżący tydzień rozliczeniowy.")) return;
 
-    let wk = "";
-    if(typeof window.isoWeekKeyWarsaw === "function") wk = window.isoWeekKeyWarsaw();
-    else if(typeof window.todayIso === "function" && typeof window.isoWeekKeyFromIsoDate === "function"){
-      wk = window.isoWeekKeyFromIsoDate(window.todayIso());
+    const wk = getBusinessWeekKeyNowSafe();
+    const db = mustDb();
+
+    try{
+      await window.closePointRequestsOnWeekClose?.(wk);
+    }catch(e){
+      console.error("closePointRequestsOnWeekClose error:", e);
     }
 
-    const db = mustDb();
+    try{
+      await closePendingAppealsOnWeekClose(db, wk);
+    }catch(e){
+      console.error("closePendingAppealsOnWeekClose error:", e);
+    }
+
     await closeWeek(db, wk, "manual");
     alert("Tydzień zamknięty.");
   };
@@ -326,11 +410,13 @@
     await db.ref("weekend").remove();
     await db.ref("meta").remove();
 
+    await db.ref("wnioski_punkty").remove().catch(()=>{});
+    await db.ref("wnioski_punkty_fplock").remove().catch(()=>{});
+
     alert("Wyczyszczone. Odświeżam aplikację.");
     location.reload();
   };
 
-  // jeżeli admin panel już jest w DOM, podepnij UI korekty od razu (bez czekania na init)
   setTimeout(()=>{ try{ window.initAdminAdjustUI(); }catch(e){} }, 0);
 
 })();
