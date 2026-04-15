@@ -6,10 +6,6 @@ window.appealsByLog = window.appealsByLog || {};
 window.appealsList = window.appealsList || [];
 window.showWholeWeekLogs = window.showWholeWeekLogs || false;
 
-// WNIOSKI O PUNKTY (global):
-// - pointRequestsAll: pełna historia (do logów)
-// - pointRequestsActive: tylko aktywne (do listy w menu rodzica)
-// - pointRequests: kompatybilnie
 window.pointRequestsAll = window.pointRequestsAll || [];
 window.pointRequestsActive = window.pointRequestsActive || [];
 window.pointRequests = window.pointRequests || [];
@@ -29,6 +25,8 @@ function escapeHtml(str) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
 }
+window.escapeHtml = escapeHtml;
+
 function setText(id, val) {
   const el = document.getElementById(id);
   if (el) el.innerText = String(val);
@@ -37,14 +35,20 @@ function dateHeader(date) {
   if (typeof window.dateWithDowPl === "function") return window.dateWithDowPl(date);
   return date;
 }
+window.dateHeader = dateHeader;
+
 function toggleWeekLogs() {
-  showWholeWeekLogs = !showWholeWeekLogs;
+  window.showWholeWeekLogs = !window.showWholeWeekLogs;
   renderAll();
 }
+window.toggleWeekLogs = toggleWeekLogs;
+
 function tsToWarsaw(ts) {
   if (!ts) return "";
   return new Date(ts).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw" });
 }
+window.tsToWarsaw = tsToWarsaw;
+
 function formatHours(val) {
   const n = Number(val || 0);
   if (Number.isFinite(n) && Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
@@ -61,7 +65,7 @@ function sortedDates(obj) {
 }
 
 /* ================== WERSJA ================== */
-const APP_VERSION = "2.0.6";
+const APP_VERSION = "2.1";
 (() => {
   const v = document.getElementById("appVer");
   if (v) v.innerText = "v" + APP_VERSION;
@@ -86,6 +90,7 @@ function openPdf(file) {
   const w = window.open(file, "_blank");
   if (!w) location.href = file;
 }
+window.openPdf = openPdf;
 
 /* ================== MENU ================== */
 function toggleAppeals() {
@@ -100,6 +105,7 @@ function toggleAppeals() {
     if (typeof window.updateAppealsButton === "function") window.updateAppealsButton();
   }
 }
+window.toggleAppeals = toggleAppeals;
 
 /* ===================================================== */
 /* ============ META: LAST CLOSE (manual/auto) =========== */
@@ -123,59 +129,134 @@ db.ref("meta/lastCloseReason").on("value", s => {
 });
 
 /* ===================================================== */
-/* ======= WYLICZANIE “DO KOŃCA NIEDZIELI” (ISO) ========= */
+/* ======= WEEKEND MESSAGE – DO KOŃCA NIEDZIELI ========= */
 /* ===================================================== */
 
-function _parseWeekKey(weekKey) {
-  const m = String(weekKey || "").match(/^(\d{4})-W(\d{2})$/);
-  if (!m) return null;
-  return { year: Number(m[1]), week: Number(m[2]) };
-}
+function endOfSundayFromTs(ts) {
+  if (!ts) return 0;
+  const base = new Date(Number(ts));
+  const warsaw = new Date(base.toLocaleString("en-US", { timeZone: "Europe/Warsaw" }));
+  const day = warsaw.getDay(); // 0=niedz
+  const add = (7 - day) % 7;
 
-function _isoWeekMondayDateIso(weekKey) {
-  const p = _parseWeekKey(weekKey);
-  if (!p) return null;
-
-  const jan4 = new Date(Date.UTC(p.year, 0, 4, 12, 0, 0));
-  const jan4Day = jan4.getUTCDay() || 7;
-  const mondayWeek1 = new Date(jan4);
-  mondayWeek1.setUTCDate(jan4.getUTCDate() - (jan4Day - 1));
-
-  const monday = new Date(mondayWeek1);
-  monday.setUTCDate(mondayWeek1.getUTCDate() + (p.week - 1) * 7);
-  return monday.toISOString().slice(0, 10);
-}
-
-function _isoShift(iso, days) {
-  if (typeof isoDateShift === "function") return isoDateShift(iso, days);
-  const dt = new Date(`${iso}T12:00:00Z`);
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
-}
-
-function _endOfSundayWarsawTs(weekKey) {
-  const monIso = _isoWeekMondayDateIso(weekKey);
-  if (!monIso) return 0;
-  const sunIso = _isoShift(monIso, 6);
-
-  const d = new Date(
-    new Date(`${sunIso}T23:59:59`).toLocaleString("en-US", { timeZone: "Europe/Warsaw" })
-  );
-  return d.getTime();
+  const sunday = new Date(warsaw.getTime());
+  sunday.setDate(sunday.getDate() + add);
+  sunday.setHours(23, 59, 59, 999);
+  return sunday.getTime();
 }
 
 function shouldShowWeekendMessageNow() {
   const at = Number(window._lastCloseAt || 0);
-  const wk = (window._lastCloseWeekKey || "").toString();
-  if (!at || !wk) return false;
+  if (!at) return false;
 
   const now = Date.now();
   if (now < at) return false;
 
-  const endSun = _endOfSundayWarsawTs(wk);
+  const endSun = endOfSundayFromTs(at);
   if (!endSun) return false;
 
   return now <= endSun;
+}
+
+/* ===================================================== */
+/* ================= BIZNESOWY TYDZIEŃ ================== */
+/* ===================================================== */
+
+function getBusinessWeekKeyNow() {
+  if (typeof window.businessWeekKeyNow === "function") return window.businessWeekKeyNow();
+  return "";
+}
+
+function getBusinessWeekKeyFromTs(ts) {
+  if (typeof window.businessWeekKeyFromTs === "function") return window.businessWeekKeyFromTs(ts);
+  return "";
+}
+
+function getBusinessWeekKeyFromIsoDate(isoDate) {
+  if (typeof window.businessWeekKeyFromIsoDate === "function") return window.businessWeekKeyFromIsoDate(isoDate);
+  return "";
+}
+
+function isTsInCurrentBusinessWeekSafe(ts) {
+  if (typeof window.isTsInCurrentBusinessWeek === "function") return window.isTsInCurrentBusinessWeek(ts);
+  return false;
+}
+
+function isTsInCurrentBusinessDaySafe(ts) {
+  if (typeof window.isTsInCurrentBusinessDay === "function") return window.isTsInCurrentBusinessDay(ts);
+  return false;
+}
+
+function businessWeekKeyForLog(dateIso, logVal) {
+  const ts = Number(logVal?.ts || 0);
+  if (ts) return getBusinessWeekKeyFromTs(ts);
+  return getBusinessWeekKeyFromIsoDate(dateIso);
+}
+
+function businessWeekKeyForPointRequest(pr) {
+  const ts = Number(pr?.createdAt ?? pr?.created_at ?? 0);
+  if (ts) return getBusinessWeekKeyFromTs(ts);
+  const dateIso = (pr?.data || "").toString();
+  return getBusinessWeekKeyFromIsoDate(dateIso);
+}
+
+function businessWeekKeyForAppeal(o) {
+  const ts = Number(o?.createdAt || 0);
+  if (ts) return getBusinessWeekKeyFromTs(ts);
+  const dateIso = (o?.data || "").toString();
+  return getBusinessWeekKeyFromIsoDate(dateIso);
+}
+
+/* ===================================================== */
+/* ======= PODSUMOWANIA Z LOGÓW (NIE Z ISO-DNI) ========= */
+/* ===================================================== */
+
+function appealNeutralizesLog(date, logId) {
+  const a = window.appealsByLog?.[`${date}|${logId}`];
+  if (!a) return false;
+  const st = normStatus(a.status);
+  return st === "accepted" || st === "accepted_auto";
+}
+
+function recomputeSummaryTiles() {
+  const logs = window.logsCache || {};
+
+  let todayVal = 0;
+  let weekVal = 0;
+
+  Object.keys(logs).forEach(date => {
+    const dayObj = logs[date] || {};
+
+    Object.keys(dayObj).forEach(logId => {
+      const v = dayObj[logId];
+      if (!v) return;
+
+      if (appealNeutralizesLog(date, logId)) return;
+
+      const ts = Number(v.ts || 0);
+
+      if (ts) {
+        if (isTsInCurrentBusinessDaySafe(ts)) todayVal += Number(v.h || 0);
+        if (isTsInCurrentBusinessWeekSafe(ts)) weekVal += Number(v.h || 0);
+        return;
+      }
+
+      // fallback dla starych wpisów bez ts
+      const wk = businessWeekKeyForLog(date, v);
+      if (wk && wk === getBusinessWeekKeyNow()) {
+        weekVal += Number(v.h || 0);
+      }
+
+      if (date === todayIso()) {
+        todayVal += Number(v.h || 0);
+      }
+    });
+  });
+
+  setText("todayR", formatHours(todayVal));
+  setText("todayJ", formatHours(todayVal));
+  setText("weekR", formatHours(weekVal));
+  setText("weekJ", formatHours(weekVal));
 }
 
 /* ===================================================== */
@@ -662,8 +743,7 @@ window.processAutoAcceptPointRequests = async function () {
     if (list.length === 0) return;
 
     const now = Date.now();
-    const today = getTodayIso();
-    const wk = (today && typeof isoWeekKeyFromIsoDate === "function") ? isoWeekKeyFromIsoDate(today) : "";
+    const currentBW = getBusinessWeekKeyNow();
     const fridayAuto = (typeof isFridayAutoAcceptTime === "function") ? isFridayAutoAcceptTime() : false;
 
     for (const r of list) {
@@ -675,12 +755,8 @@ window.processAutoAcceptPointRequests = async function () {
       const key = r.key;
       if (!key) continue;
 
-      const createdAt = r.createdAt || 0;
-      const dateIso = r.data || (createdAt ? isoFromTsWarsaw(createdAt) : today);
-
-      const shouldAutoFriday = !!fridayAuto && wk && dateIso && typeof isoWeekKeyFromIsoDate === "function"
-        ? (isoWeekKeyFromIsoDate(dateIso) === wk)
-        : !!fridayAuto;
+      const reqBW = businessWeekKeyForPointRequest(r);
+      const shouldAutoFriday = !!fridayAuto && !!currentBW && !!reqBW && (reqBW === currentBW);
 
       const exp = Number(r.expiresAt || 0);
       const shouldAuto12h = !!exp && now > exp;
@@ -717,12 +793,9 @@ window.closePointRequestsOnWeekClose = async function (weekKey) {
     const snap = await db.ref(PR_PATH).once("value");
     if (!snap.exists()) return;
 
-    const today = getTodayIso();
-    const wk = weekKey || (today && typeof isoWeekKeyFromIsoDate === "function"
-      ? isoWeekKeyFromIsoDate(today)
-      : "");
-
+    const targetWeek = weekKey || getBusinessWeekKeyNow();
     const jobs = [];
+
     snap.forEach(ch => {
       const key = ch.key;
       const cur = ch.val() || {};
@@ -731,12 +804,8 @@ window.closePointRequestsOnWeekClose = async function (weekKey) {
       if (normStatus(cur.status || "pending") !== "pending") return;
       if (cur.archived || cur.is_archived) return;
 
-      const createdAt = cur.createdAt ?? cur.created_at ?? 0;
-      const dateIso = cur.data || (createdAt ? isoFromTsWarsaw(createdAt) : today);
-
-      if (wk && dateIso && typeof isoWeekKeyFromIsoDate === "function") {
-        if (isoWeekKeyFromIsoDate(dateIso) !== wk) return;
-      }
+      const reqBW = businessWeekKeyForPointRequest(cur);
+      if (targetWeek && reqBW !== targetWeek) return;
 
       jobs.push(key);
     });
@@ -773,11 +842,11 @@ async function releaseCloseLock() {
   try { await db.ref("meta/closeLock").remove(); } catch (_) {}
 }
 
-function isSameWeek(dateIso, weekKey) {
+function isSameBusinessWeek(dateIso, ts, weekKey) {
   if (!weekKey) return true;
-  if (!dateIso) return false;
-  if (typeof isoWeekKeyFromIsoDate !== "function") return true;
-  return isoWeekKeyFromIsoDate(dateIso) === weekKey;
+  if (ts) return getBusinessWeekKeyFromTs(ts) === weekKey;
+  if (dateIso) return getBusinessWeekKeyFromIsoDate(dateIso) === weekKey;
+  return false;
 }
 
 async function closePendingAppealsOnWeekClose(weekKey) {
@@ -791,9 +860,10 @@ async function closePendingAppealsOnWeekClose(weekKey) {
     const o = ch.val() || {};
     if (normStatus(o.status) !== "pending") return;
 
+    const createdAt = Number(o.createdAt || 0);
     const dateIso = (o.data || "").toString();
-    if (!dateIso) return;
-    if (!isSameWeek(dateIso, weekKey)) return;
+
+    if (!isSameBusinessWeek(dateIso, createdAt, weekKey)) return;
 
     jobs.push({
       key: ch.key,
@@ -806,7 +876,9 @@ async function closePendingAppealsOnWeekClose(weekKey) {
     const cur = (await db.ref("odwolania/" + j.key).once("value")).val();
     if (!cur || normStatus(cur.status) !== "pending") continue;
 
-    await db.ref("dni/" + j.dateIso).transaction(x => (x || 0) - j.h);
+    if (j.dateIso) {
+      await db.ref("dni/" + j.dateIso).transaction(x => (x || 0) - j.h);
+    }
 
     await db.ref("odwolania/" + j.key).update({
       status: "accepted_auto",
@@ -817,28 +889,71 @@ async function closePendingAppealsOnWeekClose(weekKey) {
   }
 }
 
+async function rebuildDniFromLogsSnapshot(logSnap) {
+  const map = {};
+
+  if (logSnap.exists()) {
+    logSnap.forEach(day => {
+      const date = day.key;
+      let sum = 0;
+
+      day.forEach(item => {
+        const v = item.val() || {};
+        sum += Number(v.h || 0);
+      });
+
+      if (sum !== 0) {
+        map[date] = sum;
+      }
+    });
+  }
+
+  await db.ref("dni").set(map);
+}
+
 async function closeWeekCore(weekKey, reason) {
-  const dniSnap = await db.ref("dni").once("value");
+  const logSnap = await db.ref("log").once("value");
 
   let sum = 0;
-  if (dniSnap.exists()) {
-    dniSnap.forEach(d => {
-      const date = d.key;
-      const val = Number(d.val() || 0);
-      if (!date) return;
+  const toDelete = [];
 
-      if (typeof isoWeekKeyFromIsoDate === "function" && weekKey) {
-        if (isoWeekKeyFromIsoDate(date) === weekKey) sum += val;
-      } else {
-        sum += val;
-      }
+  if (logSnap.exists()) {
+    logSnap.forEach(day => {
+      const date = day.key;
+
+      day.forEach(item => {
+        const v = item.val() || {};
+        const ts = Number(v.ts || 0);
+        const sameWeek = isSameBusinessWeek(date, ts, weekKey);
+
+        if (sameWeek) {
+          sum += Number(v.h || 0);
+          toDelete.push({ date, key: item.key });
+        }
+      });
     });
   }
 
   await db.ref("weekend").set(sum);
 
-  await db.ref("dni").remove();
-  await db.ref("log").remove();
+  for (const row of toDelete) {
+    await db.ref(`log/${row.date}/${row.key}`).remove();
+  }
+
+  // posprzątaj puste dni w log
+  const logSnapAfter = await db.ref("log").once("value");
+  if (logSnapAfter.exists()) {
+    for (const date of Object.keys(logSnapAfter.val() || {})) {
+      const one = await db.ref(`log/${date}`).once("value");
+      if (!one.exists()) {
+        await db.ref(`log/${date}`).remove().catch(() => {});
+      }
+    }
+  }
+
+  // odbuduj dni z tego, co zostało
+  const logSnapRemain = await db.ref("log").once("value");
+  await rebuildDniFromLogsSnapshot(logSnapRemain);
 
   await db.ref("meta/lastCloseWeekKey").set(weekKey || "");
   await db.ref("meta/lastCloseReason").set(reason || "");
@@ -853,8 +968,7 @@ async function autoCloseWeekIfDue() {
   const due = isFridayAutoAcceptTime();
   if (!due) return;
 
-  const today = getTodayIso();
-  const wk = (today && typeof isoWeekKeyFromIsoDate === "function") ? isoWeekKeyFromIsoDate(today) : "";
+  const wk = getBusinessWeekKeyNow();
   if (!wk) return;
 
   const lastWk = (window._lastCloseWeekKey || "").toString();
@@ -880,22 +994,9 @@ async function autoCloseWeekIfDue() {
 }
 
 /* ===================================================== */
-/* ================== PODSUMOWANIA ================== */
-db.ref("dni").on("value", s => {
-  const today = todayIso();
-  const wk = isoWeekKeyFromIsoDate(today);
-  const todayVal = s.child(today).val() || 0;
+/* ================== WEEKEND: KPI + INFO =============== */
+/* ===================================================== */
 
-  let weekVal = 0;
-  s.forEach(d => {
-    if (d.key && isoWeekKeyFromIsoDate(d.key) === wk) weekVal += Number(d.val() || 0);
-  });
-
-  setText("todayR", todayVal); setText("todayJ", todayVal);
-  setText("weekR", weekVal); setText("weekJ", weekVal);
-});
-
-/* ================== WEEKEND: licznik + komunikaty ================== */
 db.ref("weekend").on("value", s => {
   const v = Number(s.val() || 0);
 
@@ -947,13 +1048,15 @@ db.ref("weekend").on("value", s => {
 
 /* ================== CACHE: LOGI ================== */
 db.ref("log").on("value", s => {
-  logsCache = {};
+  window.logsCache = {};
   s && s.forEach(day => {
-    logsCache[day.key] = {};
+    window.logsCache[day.key] = {};
     day.forEach(item => {
-      logsCache[day.key][item.key] = item.val();
+      window.logsCache[day.key][item.key] = item.val();
     });
   });
+
+  recomputeSummaryTiles();
   renderAll();
 });
 
@@ -969,6 +1072,7 @@ window.processAutoAcceptAppeals = async function () {
 
     const today = (typeof todayIso === "function") ? todayIso() : "";
     const fridayAuto = (typeof isFridayAutoAcceptTime === "function") ? isFridayAutoAcceptTime() : false;
+    const currentBW = getBusinessWeekKeyNow();
 
     for (const o of list) {
       if (!o) continue;
@@ -976,7 +1080,9 @@ window.processAutoAcceptAppeals = async function () {
 
       const deadlineDay = o.deadlineDay || "";
       const shouldByDeadline = deadlineDay && today && (today > deadlineDay);
-      const shouldByFriday = !!fridayAuto;
+
+      const appealBW = businessWeekKeyForAppeal(o);
+      const shouldByFriday = !!fridayAuto && !!currentBW && !!appealBW && (appealBW === currentBW);
 
       if (!shouldByDeadline && !shouldByFriday) continue;
 
@@ -1014,8 +1120,8 @@ window.processAutoAcceptAppeals = async function () {
 
 /* ================== CACHE: ODWOŁANIA ================== */
 db.ref("odwolania").on("value", s => {
-  appealsByLog = {};
-  appealsList = [];
+  window.appealsByLog = {};
+  window.appealsList = [];
 
   s && s.forEach(ch => {
     const o = ch.val(); if (!o) return;
@@ -1024,15 +1130,15 @@ db.ref("odwolania").on("value", s => {
     if (!date || !logId) return;
 
     const idx = `${date}|${logId}`;
-    const prev = appealsByLog[idx];
+    const prev = window.appealsByLog[idx];
 
     if (!prev || (o.createdAt || 0) > (prev.createdAt || 0)) {
-      appealsByLog[idx] = { ...o, key: ch.key };
+      window.appealsByLog[idx] = { ...o, key: ch.key };
     }
-    appealsList.push({ ...o, key: ch.key });
+    window.appealsList.push({ ...o, key: ch.key });
   });
 
-  appealsList.sort((a, b) => {
+  window.appealsList.sort((a, b) => {
     const ap = normStatus(a.status) === "pending";
     const bp = normStatus(b.status) === "pending";
     if (ap !== bp) return ap ? -1 : 1;
@@ -1045,11 +1151,13 @@ db.ref("odwolania").on("value", s => {
     if (typeof window.updateAppealsButton === "function") window.updateAppealsButton();
   } catch (_) {}
 
+  recomputeSummaryTiles();
   renderAll();
 });
 
 /* ================== HOOKI DLA AUTH ================== */
 window.onAfterLogin = function () {
+  recomputeSummaryTiles();
   renderAll();
 
   window.pointRequestsActive = computeActivePointRequests(window.pointRequestsAll);
@@ -1065,6 +1173,7 @@ setInterval(() => {
     window.processAutoAcceptPointRequests?.();
     autoCloseWeekIfDue?.();
     window.pointRequestsActive = computeActivePointRequests(window.pointRequestsAll);
+    recomputeSummaryTiles();
   } catch (e) {
     console.error(e);
   }
@@ -1076,5 +1185,6 @@ window.addEventListener("load", function () {
     window.initAdminPublicNotes();
   }
 
+  recomputeSummaryTiles();
   setTimeout(() => { try { autoCloseWeekIfDue?.(); } catch (e) {} }, 1500);
 });
