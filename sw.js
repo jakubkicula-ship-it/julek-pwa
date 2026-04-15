@@ -1,6 +1,6 @@
 // sw.js
 // 🔴 ZWIĘKSZAJ TĘ WERSJĘ PRZY KAŻDEJ ZMIANIE INDEX.HTML LUB SW
-const SW_VERSION = "2.0.4";
+const SW_VERSION = "2.0.5";
 const CACHE_NAME = "julek-cache-" + SW_VERSION;
 
 // co ma być zawsze w cache (żeby nie mieszać wersji plików)
