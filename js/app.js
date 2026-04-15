@@ -9,68 +9,72 @@ window.showWholeWeekLogs = window.showWholeWeekLogs || false;
 // WNIOSKI O PUNKTY (global):
 // - pointRequestsAll: pełna historia (do logów)
 // - pointRequestsActive: tylko aktywne (do listy w menu rodzica)
-// - pointRequests: zostawiamy kompatybilnie (jak ktoś gdzieś używa)
+// - pointRequests: kompatybilnie
 window.pointRequestsAll = window.pointRequestsAll || [];
 window.pointRequestsActive = window.pointRequestsActive || [];
 window.pointRequests = window.pointRequests || [];
 
-if(typeof window.rodzic === "undefined") window.rodzic = "";
-if(typeof window.askPinMasked !== "function"){
-  window.askPinMasked = async (title)=>{
+if (typeof window.rodzic === "undefined") window.rodzic = "";
+if (typeof window.askPinMasked !== "function") {
+  window.askPinMasked = async (title) => {
     const v = prompt(title || "PIN:");
-    return (v===null) ? null : String(v);
+    return (v === null) ? null : String(v);
   };
 }
 
 /* ================== HELPERS ================== */
-function escapeHtml(str){
-  return (str||"")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;");
+function escapeHtml(str) {
+  return (str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
-function setText(id, val){
+function setText(id, val) {
   const el = document.getElementById(id);
-  if(el) el.innerText = String(val);
+  if (el) el.innerText = String(val);
 }
-function dateHeader(date){
-  if(typeof window.dateWithDowPl === "function") return window.dateWithDowPl(date);
+function dateHeader(date) {
+  if (typeof window.dateWithDowPl === "function") return window.dateWithDowPl(date);
   return date;
 }
-function toggleWeekLogs(){
+function toggleWeekLogs() {
   showWholeWeekLogs = !showWholeWeekLogs;
   renderAll();
 }
-function tsToWarsaw(ts){
-  if(!ts) return "";
+function tsToWarsaw(ts) {
+  if (!ts) return "";
   return new Date(ts).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw" });
 }
-function formatHours(val){
+function formatHours(val) {
   const n = Number(val || 0);
-  if(Number.isFinite(n) && Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+  if (Number.isFinite(n) && Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
   return String(n).replace(".", ",");
 }
-
-/* ====== RENDER-HELPERS ====== */
-function sortedDates(obj){
-  return Object.keys(obj||{}).sort();
+function normStatus(st) {
+  return (st || "").toString().trim().toLowerCase();
+}
+function normText(s) {
+  return (s || "").toString().trim().replace(/\s+/g, " ");
+}
+function sortedDates(obj) {
+  return Object.keys(obj || {}).sort();
 }
 
 /* ================== WERSJA ================== */
-const APP_VERSION = "2.0.2";
-(()=>{
+const APP_VERSION = "2.0.5";
+(() => {
   const v = document.getElementById("appVer");
-  if(v) v.innerText = "v" + APP_VERSION;
+  if (v) v.innerText = "v" + APP_VERSION;
 })();
 
 /* ================== FIREBASE ================== */
-(function initFirebaseOnce(){
+(function initFirebaseOnce() {
   const cfg = {
-    apiKey:"AIzaSyD5asqQ2YEr_7LB9ysmyP_tZBj515-NW1o",
-    authDomain:"julek-punkty.firebaseapp.com",
-    databaseURL:"https://julek-punkty-default-rtdb.europe-west1.firebasedatabase.app"
+    apiKey: "AIzaSyD5asqQ2YEr_7LB9ysmyP_tZBj515-NW1o",
+    authDomain: "julek-punkty.firebaseapp.com",
+    databaseURL: "https://julek-punkty-default-rtdb.europe-west1.firebasedatabase.app"
   };
-  if(!firebase.apps || firebase.apps.length === 0){
+  if (!firebase.apps || firebase.apps.length === 0) {
     firebase.initializeApp(cfg);
   }
   window.db = firebase.database();
@@ -78,23 +82,100 @@ const APP_VERSION = "2.0.2";
 const db = window.db;
 
 /* ================== PDF ================== */
-function openPdf(file){
+function openPdf(file) {
   const w = window.open(file, "_blank");
-  if(!w) location.href = file;
+  if (!w) location.href = file;
 }
 
 /* ================== MENU ================== */
-function toggleAppeals(){
+function toggleAppeals() {
   const sec = document.getElementById("secAppeals");
-  if(!sec) return;
+  if (!sec) return;
 
   const willShow = sec.classList.contains("hidden");
   sec.classList.toggle("hidden");
 
-  if(willShow){
-    if(typeof window.renderParentAppeals === "function") window.renderParentAppeals();
-    if(typeof window.updateAppealsButton === "function") window.updateAppealsButton();
+  if (willShow) {
+    if (typeof window.renderParentAppeals === "function") window.renderParentAppeals();
+    if (typeof window.updateAppealsButton === "function") window.updateAppealsButton();
   }
+}
+
+/* ===================================================== */
+/* ============ META: LAST CLOSE (manual/auto) =========== */
+/* ===================================================== */
+
+window._lastCloseAt = window._lastCloseAt || 0;
+window._lastCloseWeekKey = window._lastCloseWeekKey || "";
+window._lastCloseReason = window._lastCloseReason || "";
+
+db.ref("meta/lastCloseAt").on("value", s => {
+  window._lastCloseAt = Number(s.val() || 0);
+  try { renderAll?.(); } catch (_) {}
+});
+db.ref("meta/lastCloseWeekKey").on("value", s => {
+  window._lastCloseWeekKey = (s.val() || "").toString();
+  try { renderAll?.(); } catch (_) {}
+});
+db.ref("meta/lastCloseReason").on("value", s => {
+  window._lastCloseReason = (s.val() || "").toString();
+  try { renderAll?.(); } catch (_) {}
+});
+
+/* ===================================================== */
+/* ======= WYLICZANIE “DO KOŃCA NIEDZIELI” (ISO) ========= */
+/* ===================================================== */
+
+function _parseWeekKey(weekKey) {
+  const m = String(weekKey || "").match(/^(\d{4})-W(\d{2})$/);
+  if (!m) return null;
+  return { year: Number(m[1]), week: Number(m[2]) };
+}
+
+function _isoWeekMondayDateIso(weekKey) {
+  const p = _parseWeekKey(weekKey);
+  if (!p) return null;
+
+  const jan4 = new Date(Date.UTC(p.year, 0, 4, 12, 0, 0));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const mondayWeek1 = new Date(jan4);
+  mondayWeek1.setUTCDate(jan4.getUTCDate() - (jan4Day - 1));
+
+  const monday = new Date(mondayWeek1);
+  monday.setUTCDate(mondayWeek1.getUTCDate() + (p.week - 1) * 7);
+  return monday.toISOString().slice(0, 10);
+}
+
+function _isoShift(iso, days) {
+  if (typeof isoDateShift === "function") return isoDateShift(iso, days);
+  const dt = new Date(`${iso}T12:00:00Z`);
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+function _endOfSundayWarsawTs(weekKey) {
+  const monIso = _isoWeekMondayDateIso(weekKey);
+  if (!monIso) return 0;
+  const sunIso = _isoShift(monIso, 6);
+
+  const d = new Date(
+    new Date(`${sunIso}T23:59:59`).toLocaleString("en-US", { timeZone: "Europe/Warsaw" })
+  );
+  return d.getTime();
+}
+
+function shouldShowWeekendMessageNow() {
+  const at = Number(window._lastCloseAt || 0);
+  const wk = (window._lastCloseWeekKey || "").toString();
+  if (!at || !wk) return false;
+
+  const now = Date.now();
+  if (now < at) return false;
+
+  const endSun = _endOfSundayWarsawTs(wk);
+  if (!endSun) return false;
+
+  return now <= endSun;
 }
 
 /* ===================================================== */
@@ -103,16 +184,41 @@ function toggleAppeals(){
 
 const PR_PATH = "wnioski_punkty";
 const PR_H12 = 12 * 60 * 60 * 1000;
+const PR_FPLOCK_PATH = "wnioski_punkty_fplock";
 
-function isoFromTsWarsaw(ts){
+function isoFromTsWarsaw(ts) {
   return new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Warsaw" });
 }
+function getTodayIso() {
+  return (typeof todayIso === "function") ? todayIso() : isoFromTsWarsaw(Date.now());
+}
+function makeFingerprint(dateIso, childComment) {
+  return `${dateIso}|${normText(childComment).toLowerCase()}`;
+}
 
-// Normalizacja rekordu wniosku
-function normalizePointRequest(val, key){
+function djb2Hash(str) {
+  let h = 5381;
+  const s = String(str || "");
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h) + s.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return h.toString(36);
+}
+function fpLockRef(dateIso, fp) {
+  const day = dateIso || getTodayIso();
+  const key = djb2Hash(fp || "");
+  return db.ref(`${PR_FPLOCK_PATH}/${day}/${key}`);
+}
+
+function normalizePointRequest(val, key) {
   const o = val || {};
   const createdAt = o.createdAt ?? o.created_at ?? 0;
   const expiresAt = o.expiresAt ?? o.expires_at ?? (createdAt ? (createdAt + PR_H12) : 0);
+
+  const child_comment = (o.child_comment || o.childComment || o.komentarzDziecka || o.child_commentary || "").toString();
+  const data = o.data || (createdAt ? isoFromTsWarsaw(createdAt) : null);
+  const fingerprint = o.fingerprint || (data ? makeFingerprint(data, child_comment) : "");
 
   return {
     ...o,
@@ -125,8 +231,8 @@ function normalizePointRequest(val, key){
     status: o.status || "pending",
     points: Number(o.points || 1),
 
-    child_comment: (o.child_comment || o.childComment || o.komentarzDziecka || "").toString(),
-    komentarz: (o.komentarz || o.parent_comment || o.parentComment || "").toString(),
+    child_comment,
+    komentarz: (o.komentarz || o.parent_comment || o.parentComment || o.komentarzRodzica || "").toString(),
 
     kto: (o.kto || o.decided_by || "").toString(),
     decyzjaAt: o.decyzjaAt ?? o.decided_at ?? null,
@@ -135,92 +241,393 @@ function normalizePointRequest(val, key){
     logKey: o.logKey || null,
     logDate: o.logDate || null,
 
-    data: o.data || null,
+    data,
+    fingerprint,
 
     archived: !!(o.archived || o.is_archived),
-    closedAt: o.closedAt ?? o.closed_at ?? null
+    closedAt: o.closedAt ?? o.closed_at ?? null,
+    closedReason: o.closedReason ?? o.closed_reason ?? "",
+
+    locked: !!o.locked,
+    lockedAt: o.lockedAt ?? o.locked_at ?? null,
+    lockedBy: o.lockedBy ?? o.locked_by ?? ""
   };
 }
 
-// aktywne = tylko takie, gdzie realnie można jeszcze coś kliknąć/zmienić
-function computeActivePointRequests(allList){
+function computeActivePointRequests(allList) {
   const list = Array.isArray(allList) ? allList : [];
   const now = Date.now();
   const r = (window.rodzic || "").toString();
 
-  return list.filter(p=>{
-    if(!p) return false;
-    if(p.archived || p.is_archived || p.closedAt || p.closed_at) return false;
+  return list.filter(p => {
+    if (!p) return false;
+    if (p.archived || p.is_archived) return false;
 
-    const st = String(p.status || "pending").toLowerCase();
-    if(st === "accepted_auto") return false; // zablokowane
+    const st = normStatus(p.status || "pending");
+    if (st === "accepted_auto") return false;
 
     const exp = Number(p.expiresAt || 0);
-    if(exp && now > exp) return false; // po 12h znika z listy
+    if (exp && now > exp) return false;
 
     const who = (p.kto || p.decided_by || "").toString();
 
-    // pending: tylko jeśli nikt nie kliknął i nie minęło 12h
-    if(st === "pending"){
-      return !who;
-    }
-
-    // accepted / rejected: tylko jeśli zdecydował TEN rodzic i nie minęło 12h
-    if(st === "accepted" || st === "rejected"){
-      return !!r && (who === r);
-    }
+    if (st === "pending") return !who;
+    if (st === "accepted" || st === "rejected") return !!r && (who === r);
 
     return false;
   });
 }
 
-// helper dla parent.js
-window.getActivePointRequests = function(){
+window.getActivePointRequests = function () {
   return Array.isArray(window.pointRequestsActive) ? window.pointRequestsActive : [];
 };
 
-// Odczyt wniosków z Firebase → pointRequestsAll + pointRequestsActive
-db.ref(PR_PATH).on("value", s=>{
+/* ====== LOCK per-wniosek ====== */
+async function lockPointRequest(key, by) {
+  if (!key) return { ok: false, reason: "no_key" };
+  const ref = db.ref(`${PR_PATH}/${key}`);
+  const now = Date.now();
+
+  const res = await ref.transaction(cur => {
+    if (!cur) return cur;
+    if (cur.locked) return;
+    cur.locked = true;
+    cur.lockedAt = now;
+    cur.lockedBy = by || "system";
+    return cur;
+  });
+
+  if (!res.committed) return { ok: false, reason: "locked_or_missing" };
+  return { ok: true, cur: res.snapshot.val() || {} };
+}
+
+async function unlockPointRequest(key) {
+  if (!key) return;
+  try {
+    await db.ref(`${PR_PATH}/${key}`).update({
+      locked: false,
+      lockedAt: null,
+      lockedBy: ""
+    });
+  } catch (_) {}
+}
+
+/* ====== LOCK per fingerprint ====== */
+async function claimFingerprintLock(dateIso, fingerprint, prKey) {
+  const fp = fingerprint || "";
+  if (!dateIso || !fp || !prKey) return { ok: false, reason: "missing" };
+
+  const ref = fpLockRef(dateIso, fp);
+  const now = Date.now();
+
+  const res = await ref.transaction(cur => {
+    // już zajęte przez TEN SAM wniosek -> traktujemy jako sukces
+    if (cur && cur.key === prKey) return cur;
+    // zajęte przez inny -> abort
+    if (cur && cur.key) return;
+    return { key: prKey, ts: now, fp: fp };
+  });
+
+  if (!res.committed) {
+    const v = res.snapshot.val();
+    if (v && v.key === prKey) {
+      return { ok: true, reused: true };
+    }
+    return { ok: false, reason: "taken", takenBy: v?.key || null };
+  }
+
+  const snapVal = res.snapshot.val();
+  if (snapVal && snapVal.key === prKey) {
+    return { ok: true, reused: !!snapVal.ts && snapVal.ts !== now };
+  }
+
+  return { ok: true };
+}
+
+async function releaseFingerprintLockIfOwned(dateIso, fingerprint, prKey) {
+  try {
+    const ref = fpLockRef(dateIso, fingerprint);
+    const snap = await ref.once("value");
+    const v = snap.val();
+    if (v && v.key === prKey) {
+      await ref.remove();
+    }
+  } catch (_) {}
+}
+
+/* ====== log helper: znajdź istniejący log po prKey ====== */
+async function findExistingPointRequestLog(dateIso, prKey) {
+  if (!dateIso || !prKey) return null;
+
+  const snap = await db.ref(`log/${dateIso}`).once("value");
+  if (!snap.exists()) return null;
+
+  let found = null;
+  snap.forEach(ch => {
+    const v = ch.val() || {};
+    if (found) return;
+    if (String(v.prKey || "") === String(prKey)) {
+      found = { logKey: ch.key, logDate: dateIso, value: v };
+    }
+  });
+
+  return found;
+}
+
+/* ====== księgowanie +1h do dni + wpis do log ====== */
+async function applyPointRequestOnce(key, mode, decidedBy, commentMsg, forceArchive) {
+  const by = decidedBy || "system";
+  const now = Date.now();
+
+  const locked = await lockPointRequest(key, by);
+  if (!locked.ok) return { ok: false, reason: locked.reason };
+
+  try {
+    const snap = await db.ref(`${PR_PATH}/${key}`).once("value");
+    const cur0 = snap.val() || {};
+    const st0 = normStatus(cur0.status || "pending");
+
+    // jeśli już zamknięte -> nic nie rób
+    if (st0 !== "pending") {
+      await unlockPointRequest(key);
+      return { ok: false, reason: "not_pending" };
+    }
+
+    const createdAt = cur0.createdAt ?? cur0.created_at ?? 0;
+    const childComment = normText(cur0.child_comment || cur0.childComment || cur0.komentarzDziecka || "");
+    const dateIso = cur0.data || (createdAt ? isoFromTsWarsaw(createdAt) : getTodayIso());
+    const fp = cur0.fingerprint || makeFingerprint(dateIso, childComment);
+
+    // twarda deduplikacja fingerprintu
+    const fpClaim = await claimFingerprintLock(dateIso, fp, key);
+    if (!fpClaim.ok) {
+      const dupMsg = "Duplikat wniosku (ten sam komentarz w tym samym dniu) – nie naliczono punktu.";
+      await db.ref(`${PR_PATH}/${key}`).update({
+        status: "rejected",
+        kto: "system_dedup",
+        decyzjaAt: now,
+        komentarz: dupMsg,
+        applied: false,
+        logKey: null,
+        logDate: null,
+        data: dateIso,
+        fingerprint: fp,
+        locked: false,
+        lockedAt: null,
+        lockedBy: "",
+        archived: true,
+        closedAt: now,
+        closedReason: "dedup"
+      });
+      return { ok: false, reason: "duplicate", takenBy: fpClaim.takenBy || null };
+    }
+
+    // dodatkowe uszczelnienie: jeśli log już istnieje po prKey -> nie twórz nowego
+    let existingLog = await findExistingPointRequestLog(dateIso, key);
+
+    let applied = !!cur0.applied;
+    let logKey = cur0.logKey || existingLog?.logKey || null;
+    let logDate = cur0.logDate || existingLog?.logDate || dateIso;
+
+    // jeżeli jest log po prKey, traktujemy to jako już zaksięgowane
+    if (existingLog) {
+      applied = true;
+    }
+
+    // jeśli nie było zaksięgowane – dodaj dokładnie raz
+    if (!applied) {
+      await db.ref("dni/" + dateIso).transaction(v => (v || 0) + 1);
+
+      const ref = db.ref("log/" + dateIso).push();
+      await ref.set({
+        h: 1,
+        opis: `Wniosek Julka: ${childComment} (${mode === "manual" ? "zaakceptowane" : "zaakceptowane automatycznie"})`,
+        rodzic: (mode === "manual") ? (window.rodzic || by) : "system",
+        category: "wniosek_punkt",
+        ts: Date.now(),
+        prKey: key,
+        fingerprint: fp
+      });
+
+      applied = true;
+      logKey = ref.key;
+      logDate = dateIso;
+    } else if (logKey && logDate) {
+      // upewnij się, że log ma właściwe oznaczenia
+      await db.ref(`log/${logDate}/${logKey}`).update({
+        prKey: key,
+        fingerprint: fp,
+        h: 1
+      }).catch(() => {});
+    }
+
+    const statusFinal = (mode === "manual") ? "accepted" : "accepted_auto";
+
+    const upd = {
+      status: statusFinal,
+      kto: (mode === "manual") ? (window.rodzic || by) : (mode === "week_close" ? "system_weekclose" : "auto"),
+      decyzjaAt: now,
+      komentarz: commentMsg || "",
+      applied: true,
+      logKey,
+      logDate,
+      data: dateIso,
+      fingerprint: fp,
+      locked: false,
+      lockedAt: null,
+      lockedBy: ""
+    };
+
+    if (forceArchive) {
+      upd.archived = true;
+      upd.closedAt = now;
+      upd.closedReason = mode;
+    }
+
+    await db.ref(`${PR_PATH}/${key}`).update(upd);
+    return { ok: true, status: statusFinal, dateIso, logKey };
+  } catch (e) {
+    console.error("applyPointRequestOnce error:", e);
+    await unlockPointRequest(key);
+    return { ok: false, reason: "error" };
+  }
+}
+
+/* ====== cofnięcie (gdy odrzucono, a było naliczone) ====== */
+async function revertPointRequestIfApplied(key, decidedBy, reason) {
+  const by = decidedBy || (window.rodzic || "system");
+  const now = Date.now();
+
+  const locked = await lockPointRequest(key, by);
+  if (!locked.ok) return { ok: false, reason: locked.reason };
+
+  try {
+    const snap = await db.ref(`${PR_PATH}/${key}`).once("value");
+    const cur = snap.val() || {};
+
+    const createdAt = cur.createdAt ?? cur.created_at ?? 0;
+    const childComment = normText(cur.child_comment || cur.childComment || cur.komentarzDziecka || "");
+    const dateIso = cur.data || (createdAt ? isoFromTsWarsaw(createdAt) : getTodayIso());
+    const fp = cur.fingerprint || makeFingerprint(dateIso, childComment);
+
+    let wasApplied = !!cur.applied;
+    let logDate = cur.logDate || dateIso;
+    let logKey = cur.logKey || null;
+
+    // jak nie ma logKey w rekordzie, spróbuj znaleźć po prKey
+    if (!logKey) {
+      const existingLog = await findExistingPointRequestLog(logDate, key);
+      if (existingLog) {
+        logKey = existingLog.logKey;
+        logDate = existingLog.logDate;
+        wasApplied = true;
+      }
+    }
+
+    if (wasApplied) {
+      let hToRevert = 1;
+
+      if (logDate && logKey) {
+        try {
+          const logSnap = await db.ref(`log/${logDate}/${logKey}`).once("value");
+          const lv = logSnap.val();
+          if (lv && typeof lv.h !== "undefined") hToRevert = Number(lv.h || 1);
+        } catch (_) {}
+
+        if (logDate) {
+          await db.ref("dni/" + logDate).transaction(v => (v || 0) - hToRevert);
+        }
+
+        await db.ref(`log/${logDate}/${logKey}`).remove().catch(() => {});
+      }
+
+      await releaseFingerprintLockIfOwned(logDate || dateIso, fp, key);
+    }
+
+    await db.ref(`${PR_PATH}/${key}`).update({
+      status: "rejected",
+      kto: by,
+      decyzjaAt: now,
+      komentarz: reason || "",
+      applied: false,
+      logKey: null,
+      logDate: null,
+      data: dateIso,
+      fingerprint: fp,
+      locked: false,
+      lockedAt: null,
+      lockedBy: ""
+    });
+
+    return { ok: true, reverted: wasApplied };
+  } catch (e) {
+    console.error("revertPointRequestIfApplied error:", e);
+    await unlockPointRequest(key);
+    return { ok: false, reason: "error" };
+  }
+}
+
+/* ====== API dla UI rodzica ====== */
+window.acceptPointRequest = async function (pr, parentComment) {
+  const key = (typeof pr === "string") ? pr : (pr?.key || pr?.id || "");
+  const msg = parentComment ? String(parentComment) : "";
+  return await applyPointRequestOnce(
+    key,
+    "manual",
+    (window.rodzic || "rodzic"),
+    msg,
+    false
+  );
+};
+
+window.rejectPointRequest = async function (pr, parentComment) {
+  const key = (typeof pr === "string") ? pr : (pr?.key || pr?.id || "");
+  const msg = parentComment ? String(parentComment) : "";
+  return await revertPointRequestIfApplied(
+    key,
+    (window.rodzic || "rodzic"),
+    msg
+  );
+};
+
+/* ====== Odczyt wniosków z Firebase ====== */
+db.ref(PR_PATH).on("value", s => {
   const all = [];
-  s && s.forEach(ch=>{
+  s && s.forEach(ch => {
     all.push(normalizePointRequest(ch.val(), ch.key));
   });
 
-  // sort historii: pending na górze, potem po czasie (najnowsze na górze)
-  all.sort((a,b)=>{
-    const ap = String(a.status||"").toLowerCase() === "pending";
-    const bp = String(b.status||"").toLowerCase() === "pending";
-    if(ap !== bp) return ap ? -1 : 1;
-    return (b.createdAt||0) - (a.createdAt||0);
+  all.sort((a, b) => {
+    const ap = normStatus(a.status) === "pending";
+    const bp = normStatus(b.status) === "pending";
+    if (ap !== bp) return ap ? -1 : 1;
+    return (b.createdAt || 0) - (a.createdAt || 0);
   });
 
   window.pointRequestsAll = all;
-
-  // kompatybilnie (jeśli render.js dalej bierze stąd do logów)
   window.pointRequests = all;
-
-  // lista „do klikania”
   window.pointRequestsActive = computeActivePointRequests(all);
 
-  // auto-akcept po 12h / piątek 18:00 (jak ktoś ma apkę otwartą)
-  if(typeof window.processAutoAcceptPointRequests === "function"){
+  if (typeof window.processAutoAcceptPointRequests === "function") {
     window.processAutoAcceptPointRequests();
   }
 
   renderAll();
 });
 
-// Nadpisujemy addPointRequest tak, żeby Child.js nic nie musiał wiedzieć o Firebase
-(function hookAddPointRequestToFirebase(){
+/* ===== Nadpisujemy addPointRequest -> zapis do Firebase ===== */
+(function hookAddPointRequestToFirebase() {
   const oldAdd = window.addPointRequest;
 
-  window.addPointRequest = async function(req){
-    try{
+  window.addPointRequest = async function (req) {
+    try {
       const now = Date.now();
       const createdAt = req?.created_at ?? req?.createdAt ?? now;
       const expiresAt = req?.expires_at ?? req?.expiresAt ?? (createdAt + PR_H12);
 
-      const childComment = (req?.child_comment || req?.childComment || "").toString().trim();
+      const childComment = normText(req?.child_comment || req?.childComment || req?.komentarzDziecka || "");
+      const dateIso = isoFromTsWarsaw(createdAt);
+      const fp = makeFingerprint(dateIso, childComment);
 
       const payload = {
         createdAt,
@@ -234,96 +641,79 @@ db.ref(PR_PATH).on("value", s=>{
         applied: false,
         logKey: null,
         logDate: null,
-        data: null,
+        data: dateIso,
+        fingerprint: fp,
         archived: false,
         closedAt: null,
-        closedReason: ""
+        closedReason: "",
+        locked: false,
+        lockedAt: null,
+        lockedBy: ""
       };
 
       await db.ref(PR_PATH).push(payload);
-    }catch(e){
+    } catch (e) {
       console.error("Błąd zapisu wniosku do Firebase:", e);
-      // awaryjnie: zachowaj lokalnie, żeby nie przepadło
-      try{ oldAdd?.(req); }catch(_){}
+      try { oldAdd?.(req); } catch (_) {}
       alert("Nie udało się zapisać wniosku do bazy. Spróbuj ponownie.");
     }
   };
 })();
 
-// Auto-akcept: po 12h albo piątek 18:00 (korzyść Julka)
-window.processAutoAcceptPointRequests = async function(){
-  const list = Array.isArray(window.pointRequestsAll) ? window.pointRequestsAll : [];
-  if(list.length === 0) return;
+/* ===== Auto-akcept: po 12h albo piątek 18:00 ===== */
+let _prAutoRunning = false;
+window.processAutoAcceptPointRequests = async function () {
+  if (_prAutoRunning) return;
+  _prAutoRunning = true;
 
-  const now = Date.now();
-  const today = (typeof todayIso === "function") ? todayIso() : "";
-  const fridayAuto = (typeof isFridayAutoAcceptTime === "function") ? isFridayAutoAcceptTime() : false;
+  try {
+    const list = Array.isArray(window.pointRequestsAll) ? window.pointRequestsAll : [];
+    if (list.length === 0) return;
 
-  for(const r of list){
-    if(!r || String(r.status||"") !== "pending") continue;
+    const now = Date.now();
+    const today = getTodayIso();
+    const wk = (today && typeof isoWeekKeyFromIsoDate === "function") ? isoWeekKeyFromIsoDate(today) : "";
+    const fridayAuto = (typeof isFridayAutoAcceptTime === "function") ? isFridayAutoAcceptTime() : false;
 
-    const exp = Number(r.expiresAt || 0);
-    const shouldAuto12h = exp && now > exp;
-    const shouldAutoFriday = !!fridayAuto;
+    for (const r of list) {
+      if (!r) continue;
 
-    if(!shouldAuto12h && !shouldAutoFriday) continue;
+      const st = normStatus(r.status || "pending");
+      if (st !== "pending") continue;
 
-    const key = r.key;
-    if(!key) continue;
+      const key = r.key;
+      if (!key) continue;
 
-    // pobierz aktualny stan (żeby nie zrobić podwójnie)
-    const snap = await db.ref(PR_PATH+"/"+key).once("value");
-    const cur = snap.val();
-    if(!cur || String(cur.status||"") !== "pending") continue;
+      const createdAt = r.createdAt || 0;
+      const dateIso = r.data || (createdAt ? isoFromTsWarsaw(createdAt) : today);
 
-    const createdAt = cur.createdAt ?? cur.created_at ?? 0;
-    const childComment = (cur.child_comment || "").toString().trim();
+      const shouldAutoFriday = !!fridayAuto && wk && dateIso && typeof isoWeekKeyFromIsoDate === "function"
+        ? (isoWeekKeyFromIsoDate(dateIso) === wk)
+        : !!fridayAuto;
 
-    // data do zaksięgowania punktu
-    const dateIso = cur.data
-      || (createdAt ? isoFromTsWarsaw(createdAt) : today);
+      const exp = Number(r.expiresAt || 0);
+      const shouldAuto12h = !!exp && now > exp;
 
-    // jeśli już zastosowane – tylko ustaw status (bez ponownego +1)
-    let applied = !!cur.applied;
-    let logKey = cur.logKey || null;
-    let logDate = cur.logDate || dateIso;
+      if (!shouldAuto12h && !shouldAutoFriday) continue;
 
-    if(!applied){
-      await db.ref("dni/"+dateIso).transaction(v => (v || 0) + 1);
+      const msg = shouldAutoFriday
+        ? "Do godziny 18:00 w piątek rodzic nie podjął decyzji – zaakceptowano automatycznie."
+        : "Po upływie 12 godzin rodzic nie podjął decyzji – zaakceptowano automatycznie.";
 
-      const ref = db.ref("log/"+dateIso).push();
-      await ref.set({
-        h: 1,
-        opis: `Wniosek Julka: ${childComment} (zaakceptowane automatycznie)`,
-        rodzic: "system",
-        category: "wniosek_punkt",
-        ts: Date.now()
-      });
+      const mode = shouldAutoFriday ? "friday18" : "auto12h";
 
-      applied = true;
-      logKey = ref.key;
-      logDate = dateIso;
+      await applyPointRequestOnce(
+        key,
+        mode,
+        "auto",
+        msg,
+        true
+      );
     }
-
-    const msg = shouldAutoFriday
-      ? "Do godziny 18:00 w piątek rodzic nie podjął decyzji – zaakceptowano automatycznie."
-      : "Po upływie 12 godzin rodzic nie podjął decyzji – zaakceptowano automatycznie.";
-
-    await db.ref(PR_PATH+"/"+key).update({
-      status: "accepted_auto",
-      kto: "auto",
-      decyzjaAt: Date.now(),
-      komentarz: msg,
-      applied,
-      logKey,
-      logDate,
-      data: dateIso,
-
-      // po auto-akcepcie nie ma sensu trzymać na liście „do klikania”
-      archived: true,
-      closedAt: Date.now(),
-      closedReason: shouldAutoFriday ? "friday_18" : "after_12h"
-    });
+  } catch (e) {
+    console.error("processAutoAcceptPointRequests error:", e);
+  } finally {
+    _prAutoRunning = false;
   }
 };
 
@@ -331,327 +721,369 @@ window.processAutoAcceptPointRequests = async function(){
 /* ========== WEEK CLOSE: ZAMKNIJ WNIOSKI + UI ========= */
 /* ===================================================== */
 
-window.closePointRequestsOnWeekClose = async function(weekKey){
-  try{
+window.closePointRequestsOnWeekClose = async function (weekKey) {
+  try {
     const snap = await db.ref(PR_PATH).once("value");
-    if(!snap.exists()) return;
+    if (!snap.exists()) return;
 
-    const now = Date.now();
-    const today = (typeof todayIso==="function") ? todayIso() : "";
-    const wk = weekKey || (today && typeof isoWeekKeyFromIsoDate==="function"
+    const today = getTodayIso();
+    const wk = weekKey || (today && typeof isoWeekKeyFromIsoDate === "function"
       ? isoWeekKeyFromIsoDate(today)
       : "");
 
-    const updates = {};
-    const toApply = [];
-
-    snap.forEach(ch=>{
+    const jobs = [];
+    snap.forEach(ch => {
       const key = ch.key;
       const cur = ch.val() || {};
+      if (!key) return;
 
-      // pomiń już zamknięte/archiwalne
-      if(cur.archived || cur.is_archived || cur.closedAt || cur.closed_at) return;
+      if (normStatus(cur.status || "pending") !== "pending") return;
+      if (cur.archived || cur.is_archived) return;
 
       const createdAt = cur.createdAt ?? cur.created_at ?? 0;
-      const dateIso = cur.data
-        || (createdAt ? isoFromTsWarsaw(createdAt) : today);
+      const dateIso = cur.data || (createdAt ? isoFromTsWarsaw(createdAt) : today);
 
-      // zamykamy tylko bieżący tydzień
-      if(wk && dateIso && typeof isoWeekKeyFromIsoDate==="function"){
-        if(isoWeekKeyFromIsoDate(dateIso) !== wk) return;
+      if (wk && dateIso && typeof isoWeekKeyFromIsoDate === "function") {
+        if (isoWeekKeyFromIsoDate(dateIso) !== wk) return;
       }
 
-      const childComment = (cur.child_comment || "").toString().trim();
-      const alreadyApplied = !!cur.applied;
-
-      if(!alreadyApplied){
-        toApply.push({ key, dateIso, childComment });
-      }
-
-      // zasada Kuby: po zamknięciu tygodnia WSZYSTKO na plus dla Julka
-      updates[`${key}/status`] = "accepted_auto";
-      updates[`${key}/kto`] = "system_weekclose";
-      updates[`${key}/decyzjaAt`] = now;
-      updates[`${key}/komentarz`] = "Zamknięcie tygodnia – wniosek zaliczony na plus.";
-      updates[`${key}/data`] = dateIso;
-
-      updates[`${key}/archived`] = true;
-      updates[`${key}/closedAt`] = now;
-      updates[`${key}/closedReason`] = "week_close";
+      jobs.push(key);
     });
 
-    // najpierw księgowanie +1 (żeby było w logach)
-    for(const x of toApply){
-      await db.ref("dni/"+x.dateIso).transaction(v => (v || 0) + 1);
-
-      const ref = db.ref("log/"+x.dateIso).push();
-      await ref.set({
-        h: 1,
-        opis: `Wniosek Julka: ${x.childComment} (zamknięcie tygodnia – zaliczone)`,
-        rodzic: "system",
-        category: "wniosek_punkt",
-        ts: Date.now()
-      });
-
-      updates[`${x.key}/applied`] = true;
-      updates[`${x.key}/logKey`] = ref.key;
-      updates[`${x.key}/logDate`] = x.dateIso;
+    for (const key of jobs) {
+      await applyPointRequestOnce(
+        key,
+        "week_close",
+        "system_weekclose",
+        "Zamknięcie tygodnia – wniosek zaliczony na plus.",
+        true
+      );
     }
-
-    if(Object.keys(updates).length){
-      await db.ref(PR_PATH).update(updates);
-    }
-  }catch(e){
+  } catch (e) {
     console.error("closePointRequestsOnWeekClose error:", e);
   }
 };
 
-function refreshWeekendUiEverywhere(){
-  try{ window.renderAll?.(); }catch(_){}
-  // różne nazwy w zależności od wersji:
-  try{ window.updateWeekendInfo?.(); }catch(_){}
-  try{ window.renderWeekendInfo?.(); }catch(_){}
-  try{ window.updateWeekendInfoParent?.(); }catch(_){}
-  try{ window.updateWeekendInfoJulek?.(); }catch(_){}
+/* ===================================================== */
+/* ========= AUTO CLOSE TYGODNIA (PIĄTEK 18:00) ========= */
+/* ===================================================== */
+
+async function acquireCloseLock() {
+  const lockRef = db.ref("meta/closeLock");
+  const now = Date.now();
+  const res = await lockRef.transaction(v => {
+    if (v && v.at && (now - v.at) < 2 * 60 * 1000) return;
+    return { at: now };
+  });
+  return !!(res && res.committed);
 }
 
-/* hook: zamknijTydzien() -> najpierw zamknij wnioski, potem zamknij tydzień, potem odśwież UI */
-(function hookZamknijTydzien(){
-  const tryHook = ()=>{
-    if(typeof window.zamknijTydzien !== "function") return false;
-    if(window.zamknijTydzien._hookedPointReq) return true;
+async function releaseCloseLock() {
+  try { await db.ref("meta/closeLock").remove(); } catch (_) {}
+}
 
-    const old = window.zamknijTydzien;
-    const wrapped = async function(){
-      const today = (typeof todayIso==="function") ? todayIso() : "";
-      const wk = (today && typeof isoWeekKeyFromIsoDate==="function")
-        ? isoWeekKeyFromIsoDate(today)
-        : "";
+function isSameWeek(dateIso, weekKey) {
+  if (!weekKey) return true;
+  if (!dateIso) return false;
+  if (typeof isoWeekKeyFromIsoDate !== "function") return true;
+  return isoWeekKeyFromIsoDate(dateIso) === weekKey;
+}
 
-      // 1) zamknij/zaksięguj wnioski (na plus)
-      await window.closePointRequestsOnWeekClose?.(wk);
+async function closePendingAppealsOnWeekClose(weekKey) {
+  const snap = await db.ref("odwolania").once("value");
+  if (!snap.exists()) return;
 
-      // 2) stara logika zamknięcia tygodnia
-      const res = await old.apply(this, arguments);
+  const now = Date.now();
+  const jobs = [];
 
-      // 3) komunikaty i odświeżenie (rodzic + Julek)
-      refreshWeekendUiEverywhere();
-      return res;
-    };
+  snap.forEach(ch => {
+    const o = ch.val() || {};
+    if (normStatus(o.status) !== "pending") return;
 
-    wrapped._hookedPointReq = true;
-    window.zamknijTydzien = wrapped;
-    return true;
-  };
+    const dateIso = (o.data || "").toString();
+    if (!dateIso) return;
+    if (!isSameWeek(dateIso, weekKey)) return;
 
-  if(tryHook()) return;
+    jobs.push({
+      key: ch.key,
+      dateIso,
+      h: Number(o.h || 0)
+    });
+  });
 
-  const t = setInterval(()=>{
-    if(tryHook()) clearInterval(t);
-  }, 300);
+  for (const j of jobs) {
+    const cur = (await db.ref("odwolania/" + j.key).once("value")).val();
+    if (!cur || normStatus(cur.status) !== "pending") continue;
 
-  setTimeout(()=> clearInterval(t), 15000);
-})();
+    await db.ref("dni/" + j.dateIso).transaction(x => (x || 0) - j.h);
 
+    await db.ref("odwolania/" + j.key).update({
+      status: "accepted_auto",
+      kto: "system_weekclose",
+      decyzjaAt: now,
+      komentarz: "Zamknięcie tygodnia – odwołanie zaliczone na plus."
+    });
+  }
+}
+
+async function closeWeekCore(weekKey, reason) {
+  const dniSnap = await db.ref("dni").once("value");
+
+  let sum = 0;
+  if (dniSnap.exists()) {
+    dniSnap.forEach(d => {
+      const date = d.key;
+      const val = Number(d.val() || 0);
+      if (!date) return;
+
+      if (typeof isoWeekKeyFromIsoDate === "function" && weekKey) {
+        if (isoWeekKeyFromIsoDate(date) === weekKey) sum += val;
+      } else {
+        sum += val;
+      }
+    });
+  }
+
+  await db.ref("weekend").set(sum);
+
+  await db.ref("dni").remove();
+  await db.ref("log").remove();
+
+  await db.ref("meta/lastCloseWeekKey").set(weekKey || "");
+  await db.ref("meta/lastCloseReason").set(reason || "");
+  await db.ref("meta/lastCloseAt").set(Date.now());
+}
+
+let _autoCloseRunning = false;
+async function autoCloseWeekIfDue() {
+  if (_autoCloseRunning) return;
+  if (typeof isFridayAutoAcceptTime !== "function") return;
+
+  const due = isFridayAutoAcceptTime();
+  if (!due) return;
+
+  const today = getTodayIso();
+  const wk = (today && typeof isoWeekKeyFromIsoDate === "function") ? isoWeekKeyFromIsoDate(today) : "";
+  if (!wk) return;
+
+  const lastWk = (window._lastCloseWeekKey || "").toString();
+  if (lastWk && lastWk === wk) return;
+
+  _autoCloseRunning = true;
+  const got = await acquireCloseLock();
+  if (!got) {
+    _autoCloseRunning = false;
+    return;
+  }
+
+  try {
+    try { await window.closePointRequestsOnWeekClose?.(wk); } catch (e) { console.error(e); }
+    try { await closePendingAppealsOnWeekClose(wk); } catch (e) { console.error(e); }
+    await closeWeekCore(wk, "auto_friday18");
+  } catch (e) {
+    console.error("autoCloseWeekIfDue error:", e);
+  } finally {
+    await releaseCloseLock();
+    _autoCloseRunning = false;
+  }
+}
+
+/* ===================================================== */
 /* ================== PODSUMOWANIA ================== */
-db.ref("dni").on("value",s=>{
+db.ref("dni").on("value", s => {
   const today = todayIso();
   const wk = isoWeekKeyFromIsoDate(today);
   const todayVal = s.child(today).val() || 0;
 
   let weekVal = 0;
-  s.forEach(d=>{
-    if(d.key && isoWeekKeyFromIsoDate(d.key) === wk) weekVal += Number(d.val()||0);
+  s.forEach(d => {
+    if (d.key && isoWeekKeyFromIsoDate(d.key) === wk) weekVal += Number(d.val() || 0);
   });
 
   setText("todayR", todayVal); setText("todayJ", todayVal);
-  setText("weekR", weekVal);  setText("weekJ", weekVal);
+  setText("weekR", weekVal); setText("weekJ", weekVal);
 });
 
 /* ================== WEEKEND: licznik + komunikaty ================== */
-db.ref("weekend").on("value",s=>{
-  const v = Number(s.val()||0);
+db.ref("weekend").on("value", s => {
+  const v = Number(s.val() || 0);
 
-  const showCounter = (typeof isWeekendCounterTime==="function") ? isWeekendCounterTime() : true;
-  const showMsg = (typeof isWeekendMessageTime==="function") ? isWeekendMessageTime() : false;
+  const showCounter = (typeof isWeekendCounterTime === "function") ? isWeekendCounterTime() : true;
+  const showMsg = shouldShowWeekendMessageNow();
 
-  // licznik weekendowy: pt/sob/niedz widoczny, od poniedziałku znika
   const spR = document.getElementById("weekendR");
-  if(spR){
-    const row = spR.closest("div"); // "Weekend: ..."
-    if(row) row.style.display = showCounter ? "" : "none";
-  }
-  const spJ = document.getElementById("weekendJ");
-  if(spJ){
-    const kpi = spJ.closest(".julekKpi");
-    if(kpi) kpi.style.display = showCounter ? "" : "none";
+  if (spR) {
+    const row = spR.closest("div");
+    if (row) row.style.display = showCounter ? "" : "none";
   }
 
-  if(showCounter){
+  const spJ = document.getElementById("weekendJ");
+  if (spJ) {
+    const kpi = spJ.closest(".julekKpi");
+    if (kpi) kpi.style.display = showCounter ? "" : "none";
+  }
+
+  if (showCounter) {
     setText("weekendR", formatHours(v));
     setText("weekendJ", formatHours(v));
   }
 
-  // komunikat weekendowy: pt po 18:00 + sob + niedz
   const boxR = document.getElementById("weekendInfoParent");
   const boxJ = document.getElementById("weekendInfoJulek");
-  if(boxR) boxR.classList.toggle("hidden", !showMsg);
-  if(boxJ) boxJ.classList.toggle("hidden", !showMsg);
+  if (boxR) boxR.classList.toggle("hidden", !showMsg);
+  if (boxJ) boxJ.classList.toggle("hidden", !showMsg);
 
-  function msgFor(val){
-    if(val > 0) return `JULEK W BIEŻĄCY WEEKEND MOŻE KORZYSTAĆ Z KOMPUTERA PRZEZ ${formatHours(val)} GODZIN.`;
-    if(val < 0) return `JULEK W BIEŻĄCY WEEKEND MA DO ODPRACOWANIA NA RZECZ RODZICÓW ${formatHours(Math.abs(val))} GODZIN.`;
+  function msgFor(val) {
+    if (val > 0) return `JULEK W BIEŻĄCY WEEKEND MOŻE KORZYSTAĆ Z KOMPUTERA PRZEZ ${formatHours(val)} GODZIN.`;
+    if (val < 0) return `JULEK W BIEŻĄCY WEEKEND MA DO ODPRACOWANIA NA RZECZ RODZICÓW ${formatHours(Math.abs(val))} GODZIN.`;
     return `JULEK W BIEŻĄCY WEEKEND NIE MA GODZIN DO WYKORZYSTANIA.`;
   }
 
-  if(showMsg){
+  if (showMsg) {
     const t = msgFor(v);
     const tR = document.getElementById("weekendInfoTextParent");
     const tJ = document.getElementById("weekendInfoTextJulek");
-    if(tR) tR.innerText = t;
-    if(tJ) tJ.innerText = t;
+    if (tR) tR.innerText = t;
+    if (tJ) tJ.innerText = t;
 
-    const dLine = "Obowiązuje przez ten weekend.";
+    const dLine = "Obowiązuje do końca niedzieli.";
     const dR = document.getElementById("weekendInfoDateParent");
     const dJ = document.getElementById("weekendInfoDateJulek");
-    if(dR) dR.innerText = dLine;
-    if(dJ) dJ.innerText = dLine;
+    if (dR) dR.innerText = dLine;
+    if (dJ) dJ.innerText = dLine;
   }
 });
 
 /* ================== CACHE: LOGI ================== */
-db.ref("log").on("value", s=>{
+db.ref("log").on("value", s => {
   logsCache = {};
-  s && s.forEach(day=>{
+  s && s.forEach(day => {
     logsCache[day.key] = {};
-    day.forEach(item=>{
+    day.forEach(item => {
       logsCache[day.key][item.key] = item.val();
     });
   });
   renderAll();
 });
 
-/* ================== AUTO-AKCEPT ODWOŁAŃ (deadline + piątek 18:00) ================== */
-window.processAutoAcceptAppeals = async function(){
-  const list = Array.isArray(window.appealsList) ? window.appealsList : [];
-  if(list.length === 0) return;
+/* ================== AUTO-AKCEPT ODWOŁAŃ ================== */
+let _appealsAutoRunning = false;
+window.processAutoAcceptAppeals = async function () {
+  if (_appealsAutoRunning) return;
+  _appealsAutoRunning = true;
 
-  const today = (typeof todayIso==="function") ? todayIso() : "";
-  const fridayAuto = (typeof isFridayAutoAcceptTime==="function") ? isFridayAutoAcceptTime() : false;
+  try {
+    const list = Array.isArray(window.appealsList) ? window.appealsList : [];
+    if (list.length === 0) return;
 
-  for(const o of list){
-    if(!o) continue;
-    if((o.status||"") !== "pending") continue;
+    const today = (typeof todayIso === "function") ? todayIso() : "";
+    const fridayAuto = (typeof isFridayAutoAcceptTime === "function") ? isFridayAutoAcceptTime() : false;
 
-    const deadlineDay = o.deadlineDay || "";
-    const shouldByDeadline = deadlineDay && today && (today > deadlineDay);
-    const shouldByFriday = !!fridayAuto;
+    for (const o of list) {
+      if (!o) continue;
+      if (normStatus(o.status) !== "pending") continue;
 
-    if(!shouldByDeadline && !shouldByFriday) continue;
+      const deadlineDay = o.deadlineDay || "";
+      const shouldByDeadline = deadlineDay && today && (today > deadlineDay);
+      const shouldByFriday = !!fridayAuto;
 
-    const key = o.key;
-    if(!key) continue;
+      if (!shouldByDeadline && !shouldByFriday) continue;
 
-    // pobierz aktualny stan (żeby nie zrobić podwójnie)
-    const snap = await db.ref("odwolania/"+key).once("value");
-    const cur = snap.val();
-    if(!cur || (cur.status||"") !== "pending") continue;
+      const key = o.key;
+      if (!key) continue;
 
-    const dateIso = cur.data || "";
-    const h = Number(cur.h || 0);
+      const snap = await db.ref("odwolania/" + key).once("value");
+      const cur = snap.val();
+      if (!cur || normStatus(cur.status) !== "pending") continue;
 
-    // AUTO-UZNANIE odwołania = cofnięcie wpływu wpisu na saldo (tak jak acceptAppeal)
-    if(dateIso){
-      await db.ref("dni/"+dateIso).transaction(x => (x||0) - h);
+      const dateIso = cur.data || "";
+      const h = Number(cur.h || 0);
+
+      if (dateIso) {
+        await db.ref("dni/" + dateIso).transaction(x => (x || 0) - h);
+      }
+
+      const msg = shouldByFriday
+        ? "Do godziny 18:00 w piątek rodzic nie podjął decyzji – odwołanie zaakceptowano automatycznie."
+        : "Po terminie decyzji rodzica – odwołanie zaakceptowano automatycznie.";
+
+      await db.ref("odwolania/" + key).update({
+        status: "accepted_auto",
+        kto: "auto",
+        decyzjaAt: Date.now(),
+        komentarz: msg
+      });
     }
-
-    const msg = shouldByFriday
-      ? "Do godziny 18:00 w piątek rodzic nie podjął decyzji – odwołanie zaakceptowano automatycznie."
-      : "Po terminie decyzji rodzica – odwołanie zaakceptowano automatycznie.";
-
-    await db.ref("odwolania/"+key).update({
-      status: "accepted_auto",
-      kto: "auto",
-      decyzjaAt: Date.now(),
-      komentarz: msg
-    });
+  } catch (e) {
+    console.error("processAutoAcceptAppeals error:", e);
+  } finally {
+    _appealsAutoRunning = false;
   }
 };
 
 /* ================== CACHE: ODWOŁANIA ================== */
-db.ref("odwolania").on("value", s=>{
+db.ref("odwolania").on("value", s => {
   appealsByLog = {};
   appealsList = [];
 
-  s && s.forEach(ch=>{
-    const o = ch.val(); if(!o) return;
+  s && s.forEach(ch => {
+    const o = ch.val(); if (!o) return;
     const date = o.data || "";
     const logId = o.logId || "";
-    if(!date || !logId) return;
+    if (!date || !logId) return;
 
     const idx = `${date}|${logId}`;
     const prev = appealsByLog[idx];
 
-    if(!prev || (o.createdAt||0) > (prev.createdAt||0)){
-      appealsByLog[idx] = {...o, key: ch.key};
+    if (!prev || (o.createdAt || 0) > (prev.createdAt || 0)) {
+      appealsByLog[idx] = { ...o, key: ch.key };
     }
-    appealsList.push({...o, key: ch.key});
+    appealsList.push({ ...o, key: ch.key });
   });
 
-  appealsList.sort((a,b)=>{
-    const ap = a.status==="pending", bp = b.status==="pending";
-    if(ap!==bp) return ap?-1:1;
-    return (b.decyzjaAt||b.createdAt||0) - (a.decyzjaAt||a.createdAt||0);
+  appealsList.sort((a, b) => {
+    const ap = normStatus(a.status) === "pending";
+    const bp = normStatus(b.status) === "pending";
+    if (ap !== bp) return ap ? -1 : 1;
+    return (b.decyzjaAt || b.createdAt || 0) - (a.decyzjaAt || a.createdAt || 0);
   });
 
-  // auto-akcept odwołań (deadline + piątek 18:00)
   window.processAutoAcceptAppeals?.();
 
-  updateAppealsButton();
+  try {
+    if (typeof window.updateAppealsButton === "function") window.updateAppealsButton();
+  } catch (_) {}
+
   renderAll();
 });
 
-/* ================== PRZYCISK ODWOŁAŃ ================== */
-function updateAppealsButton(){
-  const btn = document.getElementById("btnAppeals");
-  const badge = document.getElementById("appealsBadge");
-  if(!btn || !badge) return;
-
-  const pending = (appealsList||[]).filter(a=>(a.status||"")==="pending").length;
-  badge.innerText = String(pending);
-
-  btn.classList.toggle("btnRed", pending>0);
-  btn.classList.toggle("btnGreen", pending===0);
-}
-
 /* ================== HOOKI DLA AUTH ================== */
-window.onAfterLogin = function(){
+window.onAfterLogin = function () {
   renderAll();
 
-  // przelicz aktywne po zalogowaniu (bo zależy od window.rodzic)
   window.pointRequestsActive = computeActivePointRequests(window.pointRequestsAll);
 
   window.processAutoAcceptAppeals?.();
   window.processAutoAcceptPointRequests?.();
 };
 
-/* ================== TIMER (żeby 18:00 zadziałało przy otwartej apce) ================== */
-setInterval(()=>{
-  try{
+/* ================== TIMER ================== */
+setInterval(() => {
+  try {
     window.processAutoAcceptAppeals?.();
     window.processAutoAcceptPointRequests?.();
-
-    // odśwież aktywne (w razie zmiany rodzica / upływu czasu)
+    autoCloseWeekIfDue?.();
     window.pointRequestsActive = computeActivePointRequests(window.pointRequestsAll);
-  }catch(e){
+  } catch (e) {
     console.error(e);
   }
 }, 60 * 1000);
 
 /* ================== INIT ADMIN PUBLIC (LOGIN) ================== */
-window.addEventListener("load", function(){
-  if(typeof window.initAdminPublicNotes === "function"){
+window.addEventListener("load", function () {
+  if (typeof window.initAdminPublicNotes === "function") {
     window.initAdminPublicNotes();
   }
-});
 
+  setTimeout(() => { try { autoCloseWeekIfDue?.(); } catch (e) {} }, 1500);
+});
