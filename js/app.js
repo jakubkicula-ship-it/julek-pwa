@@ -61,7 +61,7 @@ function sortedDates(obj) {
 }
 
 /* ================== WERSJA ================== */
-const APP_VERSION = "2.0.5";
+const APP_VERSION = "2.0.6";
 (() => {
   const v = document.getElementById("appVer");
   if (v) v.innerText = "v" + APP_VERSION;
@@ -321,9 +321,7 @@ async function claimFingerprintLock(dateIso, fingerprint, prKey) {
   const now = Date.now();
 
   const res = await ref.transaction(cur => {
-    // już zajęte przez TEN SAM wniosek -> traktujemy jako sukces
     if (cur && cur.key === prKey) return cur;
-    // zajęte przez inny -> abort
     if (cur && cur.key) return;
     return { key: prKey, ts: now, fp: fp };
   });
@@ -387,7 +385,6 @@ async function applyPointRequestOnce(key, mode, decidedBy, commentMsg, forceArch
     const cur0 = snap.val() || {};
     const st0 = normStatus(cur0.status || "pending");
 
-    // jeśli już zamknięte -> nic nie rób
     if (st0 !== "pending") {
       await unlockPointRequest(key);
       return { ok: false, reason: "not_pending" };
@@ -398,7 +395,6 @@ async function applyPointRequestOnce(key, mode, decidedBy, commentMsg, forceArch
     const dateIso = cur0.data || (createdAt ? isoFromTsWarsaw(createdAt) : getTodayIso());
     const fp = cur0.fingerprint || makeFingerprint(dateIso, childComment);
 
-    // twarda deduplikacja fingerprintu
     const fpClaim = await claimFingerprintLock(dateIso, fp, key);
     if (!fpClaim.ok) {
       const dupMsg = "Duplikat wniosku (ten sam komentarz w tym samym dniu) – nie naliczono punktu.";
@@ -422,19 +418,16 @@ async function applyPointRequestOnce(key, mode, decidedBy, commentMsg, forceArch
       return { ok: false, reason: "duplicate", takenBy: fpClaim.takenBy || null };
     }
 
-    // dodatkowe uszczelnienie: jeśli log już istnieje po prKey -> nie twórz nowego
     let existingLog = await findExistingPointRequestLog(dateIso, key);
 
     let applied = !!cur0.applied;
     let logKey = cur0.logKey || existingLog?.logKey || null;
     let logDate = cur0.logDate || existingLog?.logDate || dateIso;
 
-    // jeżeli jest log po prKey, traktujemy to jako już zaksięgowane
     if (existingLog) {
       applied = true;
     }
 
-    // jeśli nie było zaksięgowane – dodaj dokładnie raz
     if (!applied) {
       await db.ref("dni/" + dateIso).transaction(v => (v || 0) + 1);
 
@@ -453,7 +446,6 @@ async function applyPointRequestOnce(key, mode, decidedBy, commentMsg, forceArch
       logKey = ref.key;
       logDate = dateIso;
     } else if (logKey && logDate) {
-      // upewnij się, że log ma właściwe oznaczenia
       await db.ref(`log/${logDate}/${logKey}`).update({
         prKey: key,
         fingerprint: fp,
@@ -514,7 +506,6 @@ async function revertPointRequestIfApplied(key, decidedBy, reason) {
     let logDate = cur.logDate || dateIso;
     let logKey = cur.logKey || null;
 
-    // jak nie ma logKey w rekordzie, spróbuj znaleźć po prKey
     if (!logKey) {
       const existingLog = await findExistingPointRequestLog(logDate, key);
       if (existingLog) {
