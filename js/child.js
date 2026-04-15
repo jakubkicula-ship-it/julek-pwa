@@ -26,21 +26,24 @@
     return true;
   }
 
+  function isTodayCalendarDate(dateIso){
+    return dateIso === todayIso();
+  }
+
   /* ================== INIT PANELU JULKA ================== */
   window.initChildPanel = function(){
     window.renderJulekLogs?.();
 
-    // ramka wniosków ma się odświeżyć od razu po wejściu
+    // jeśli kiedyś dodasz osobną ramkę wniosków Julka, to hook zostaje
     window.renderJulekPointRequests?.();
 
-    // komunikat piątkowy od 12:00 (przy każdym wejściu do apki)
     showFridayInfoOnEveryEntry();
   };
 
   /* ================== WNIOSEK O +1 PUNKT (JULEK) ================== */
   window.wniosekOPunkt = async function(){
 
-    // blokada piątkowa
+    // blokada piątkowa 17:30–18:05
     if(checkFridayBlocked()) return;
 
     const txt =
@@ -61,7 +64,6 @@
 
     const req = createPointRequest(comment.trim());
 
-    // addPointRequest w app.js jest podpięty do Firebase → to może być async
     try{
       await addPointRequest(req);
     }catch(e){
@@ -72,7 +74,6 @@
 
     alert("Wniosek o 1 punkt został zapisany i czeka na decyzję rodzica.");
 
-    // odśwież ramkę wniosków
     window.renderJulekPointRequests?.();
   };
 
@@ -82,14 +83,17 @@
     // blokada piątkowa także dla odwołań
     if(checkFridayBlocked("ODWOŁANIA BĘDZIE MOŻNA DODAĆ PO GODZINIE 18:05.")) return;
 
-    if(date !== todayIso()){
+    // odwołanie tylko od wpisu z dzisiaj kalendarzowo
+    if(!isTodayCalendarDate(date)){
       alert("Odwołanie tylko w dniu przyznania punktów.");
       return;
     }
-    if(v.h >= 0){
+
+    if(Number(v?.h || 0) >= 0){
       alert("Od dodatnich punktów nie ma sensu się odwoływać.");
       return;
     }
+
     if(appealsByLog[`${date}|${logId}`]){
       alert("Odwołanie już jest złożone (tylko raz).");
       return;
@@ -104,8 +108,8 @@
     await db.ref("odwolania").push({
       data: date,
       logId: logId,
-      h: v.h,
-      opis: v.opis,
+      h: Number(v.h || 0),
+      opis: v.opis || "",
       powod: why.trim(),
       status: "pending",
       createdAt: Date.now(),
