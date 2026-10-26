@@ -79,6 +79,10 @@
 
   /* ================== ODWOŁANIE (JULEK) ================== */
   window.odwolanie = async function(date, logId, v){
+    if (businessWeekKeyForLog(date, v) !== businessWeekKeyNow()) {
+      alert("Ten wpis należy do zakończonego tygodnia.");
+      return;
+    }
 
     // blokada piątkowa także dla odwołań
     if(checkFridayBlocked("ODWOŁANIA BĘDZIE MOŻNA DODAĆ PO GODZINIE 18:05.")) return;

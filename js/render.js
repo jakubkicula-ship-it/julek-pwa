@@ -136,6 +136,7 @@ window.renderParentLogs = function(){
   const today = (typeof window.todayIso === "function") ? window.todayIso() : "";
 
   dates.forEach(date=>{
+    if(!isHistoryDateVisible(date)) return;
     if(!window.showWholeWeekLogs && date !== today) return;
 
     const dayObj = window.logsCache[date] || {};
@@ -161,7 +162,7 @@ window.renderParentLogs = function(){
       del.className = "smallbtn";
       del.innerText = "Usuń";
 
-      if(!window.rodzic || date !== today || v.rodzic !== window.rodzic){
+      if(!window.rodzic || date !== today || v.rodzic !== window.rodzic || businessWeekKeyForLog(date, v) !== businessWeekKeyNow()){
         del.disabled = true;
       } else {
         del.onclick = ()=> window.usunWpisDzis?.(date, logId, v);
@@ -199,6 +200,7 @@ window.renderJulekLogs = function(){
   }
 
   loopDates.forEach(date=>{
+    if(!isHistoryDateVisible(date)) return;
     if(!window.showWholeWeekLogs && date !== today) return;
 
     const dayObj = window.logsCache[date] || {};
@@ -332,7 +334,7 @@ window.renderParentAppeals = function(){
   if(!root) return;
   root.innerHTML = "";
 
-  const list = Array.isArray(window.appealsList) ? window.appealsList : [];
+  const list = (Array.isArray(window.appealsList) ? window.appealsList : []).filter(o => isHistoryDateVisible(o.data));
   if(list.length === 0){
     root.innerHTML = "<div class='muted'>Brak odwołań.</div>";
     return;
@@ -345,9 +347,9 @@ window.renderParentAppeals = function(){
     wrap.className = "box " + (window.appealClass?.(o) || "");
 
     wrap.innerHTML = `
-      <b>${(o.opis||"")}</b>
+      <b>${window.escapeHtml(o.opis||"")}</b>
       <div class="muted">Wartość: ${o.h} h · Data: ${o.data}</div>
-      <div style="margin-top:6px;"><i>Powód:</i><br>${(o.powod||"")}</div>
+      <div style="margin-top:6px;"><i>Powód:</i><br>${window.escapeHtml(o.powod||"")}</div>
     `;
 
     if((o.status||"")==="pending"){

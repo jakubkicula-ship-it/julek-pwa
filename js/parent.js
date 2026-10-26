@@ -161,6 +161,7 @@
   /* ================== USUWANIE WPISU (TYLKO DZIŚ KALENDARZOWO) ================== */
   window.usunWpisDzis = async function(date, logId, v){
     if(!rodzic) return alert("Najpierw zaloguj rodzica.");
+    if (businessWeekKeyForLog(date, v) !== businessWeekKeyNow()) return alert("Ten wpis należy do zakończonego tygodnia.");
     if(date !== todayIso()) return alert("Można usuwać tylko dzisiejsze wpisy.");
     if(v.rodzic !== rodzic) return alert("Może usunąć tylko autor wpisu.");
     if(!confirm("Usunąć ten wpis?")) return;

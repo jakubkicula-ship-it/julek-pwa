@@ -118,8 +118,11 @@ li{ margin: 6px 0; }
   gap:10px;
   align-items:center;
   justify-content:space-between;
+  flex-wrap:wrap;
   font-weight: 800;
 }
+#updateMessage{ flex:1 1 220px; }
+#updateBanner #updateLater{ background:#fff; border:1px solid #9a6b10; }
 #updateBanner button{
   background:#f0ad4e;
   border:0;

@@ -65,7 +65,7 @@ function sortedDates(obj) {
 }
 
 /* ================== WERSJA ================== */
-const APP_VERSION = "2.1";
+const APP_VERSION = JULEK_SETTINGS.version;
 (() => {
   const v = document.getElementById("appVer");
   if (v) v.innerText = "v" + APP_VERSION;
@@ -132,31 +132,15 @@ db.ref("meta/lastCloseReason").on("value", s => {
 /* ======= WEEKEND MESSAGE – DO KOŃCA NIEDZIELI ========= */
 /* ===================================================== */
 
-function endOfSundayFromTs(ts) {
-  if (!ts) return 0;
-  const base = new Date(Number(ts));
-  const warsaw = new Date(base.toLocaleString("en-US", { timeZone: "Europe/Warsaw" }));
-  const day = warsaw.getDay(); // 0=niedz
-  const add = (7 - day) % 7;
-
-  const sunday = new Date(warsaw.getTime());
-  sunday.setDate(sunday.getDate() + add);
-  sunday.setHours(23, 59, 59, 999);
-  return sunday.getTime();
-}
-
+window.weekendSettlement = null;
 function shouldShowWeekendMessageNow() {
-  const at = Number(window._lastCloseAt || 0);
-  if (!at) return false;
-
-  const now = Date.now();
-  if (now < at) return false;
-
-  const endSun = endOfSundayFromTs(at);
-  if (!endSun) return false;
-
-  return now <= endSun;
+  const result = window.weekendSettlement;
+  return !!result && Date.now() >= result.endAt && Date.now() < weekendExpiresAt(result.endAt);
 }
+db.ref("meta/weekendSettlement").on("value", snapshot => {
+  window.weekendSettlement = snapshot.val();
+  renderWeekendInfo();
+});
 
 /* ===================================================== */
 /* ================= BIZNESOWY TYDZIEŃ ================== */
@@ -518,7 +502,7 @@ async function applyPointRequestOnce(key, mode, decidedBy, commentMsg, forceArch
         opis: `Wniosek Julka: ${childComment} (${mode === "manual" ? "zaakceptowane" : "zaakceptowane automatycznie"})`,
         rodzic: (mode === "manual") ? (window.rodzic || by) : "system",
         category: "wniosek_punkt",
-        ts: Date.now(),
+        ts: Number(createdAt) || warsawTimestamp(dateIso, 12),
         prKey: key,
         fingerprint: fp
       });
@@ -756,7 +740,9 @@ window.processAutoAcceptPointRequests = async function () {
       if (!key) continue;
 
       const reqBW = businessWeekKeyForPointRequest(r);
-      const shouldAutoFriday = !!fridayAuto && !!currentBW && !!reqBW && (reqBW === currentBW);
+      // Zakończone okresy obsługuje wspólna transakcja zamknięcia tygodnia.
+      if (reqBW && reqBW < currentBW) continue;
+      const shouldAutoFriday = false;
 
       const exp = Number(r.expiresAt || 0);
       const shouldAuto12h = !!exp && now > exp;
@@ -828,223 +814,76 @@ window.closePointRequestsOnWeekClose = async function (weekKey) {
 /* ========= AUTO CLOSE TYGODNIA (PIĄTEK 18:00) ========= */
 /* ===================================================== */
 
-async function acquireCloseLock() {
-  const lockRef = db.ref("meta/closeLock");
-  const now = Date.now();
-  const res = await lockRef.transaction(v => {
-    if (v && v.at && (now - v.at) < 2 * 60 * 1000) return;
-    return { at: now };
-  });
-  return !!(res && res.committed);
-}
-
-async function releaseCloseLock() {
-  try { await db.ref("meta/closeLock").remove(); } catch (_) {}
-}
-
-function isSameBusinessWeek(dateIso, ts, weekKey) {
-  if (!weekKey) return true;
-  if (ts) return getBusinessWeekKeyFromTs(ts) === weekKey;
-  if (dateIso) return getBusinessWeekKeyFromIsoDate(dateIso) === weekKey;
-  return false;
-}
-
-async function closePendingAppealsOnWeekClose(weekKey) {
-  const snap = await db.ref("odwolania").once("value");
-  if (!snap.exists()) return;
-
-  const now = Date.now();
-  const jobs = [];
-
-  snap.forEach(ch => {
-    const o = ch.val() || {};
-    if (normStatus(o.status) !== "pending") return;
-
-    const createdAt = Number(o.createdAt || 0);
-    const dateIso = (o.data || "").toString();
-
-    if (!isSameBusinessWeek(dateIso, createdAt, weekKey)) return;
-
-    jobs.push({
-      key: ch.key,
-      dateIso,
-      h: Number(o.h || 0)
-    });
-  });
-
-  for (const j of jobs) {
-    const cur = (await db.ref("odwolania/" + j.key).once("value")).val();
-    if (!cur || normStatus(cur.status) !== "pending") continue;
-
-    if (j.dateIso) {
-      await db.ref("dni/" + j.dateIso).transaction(x => (x || 0) - j.h);
-    }
-
-    await db.ref("odwolania/" + j.key).update({
-      status: "accepted_auto",
-      kto: "system_weekclose",
-      decyzjaAt: now,
-      komentarz: "Zamknięcie tygodnia – odwołanie zaliczone na plus."
-    });
-  }
-}
-
-async function rebuildDniFromLogsSnapshot(logSnap) {
-  const map = {};
-
-  if (logSnap.exists()) {
-    logSnap.forEach(day => {
-      const date = day.key;
-      let sum = 0;
-
-      day.forEach(item => {
-        const v = item.val() || {};
-        sum += Number(v.h || 0);
-      });
-
-      if (sum !== 0) {
-        map[date] = sum;
-      }
-    });
-  }
-
-  await db.ref("dni").set(map);
-}
-
-async function closeWeekCore(weekKey, reason) {
-  const logSnap = await db.ref("log").once("value");
-
-  let sum = 0;
-  const toDelete = [];
-
-  if (logSnap.exists()) {
-    logSnap.forEach(day => {
-      const date = day.key;
-
-      day.forEach(item => {
-        const v = item.val() || {};
-        const ts = Number(v.ts || 0);
-        const sameWeek = isSameBusinessWeek(date, ts, weekKey);
-
-        if (sameWeek) {
-          sum += Number(v.h || 0);
-          toDelete.push({ date, key: item.key });
-        }
-      });
-    });
-  }
-
-  await db.ref("weekend").set(sum);
-
-  for (const row of toDelete) {
-    await db.ref(`log/${row.date}/${row.key}`).remove();
-  }
-
-  // posprzątaj puste dni w log
-  const logSnapAfter = await db.ref("log").once("value");
-  if (logSnapAfter.exists()) {
-    for (const date of Object.keys(logSnapAfter.val() || {})) {
-      const one = await db.ref(`log/${date}`).once("value");
-      if (!one.exists()) {
-        await db.ref(`log/${date}`).remove().catch(() => {});
-      }
-    }
-  }
-
-  // odbuduj dni z tego, co zostało
-  const logSnapRemain = await db.ref("log").once("value");
-  await rebuildDniFromLogsSnapshot(logSnapRemain);
-
-  await db.ref("meta/lastCloseWeekKey").set(weekKey || "");
-  await db.ref("meta/lastCloseReason").set(reason || "");
-  await db.ref("meta/lastCloseAt").set(Date.now());
-}
-
+// Jedna transakcja zachowuje logi i zapisuje wynik każdego tygodnia dokładnie raz.
 let _autoCloseRunning = false;
-async function autoCloseWeekIfDue() {
-  if (_autoCloseRunning) return;
-  if (typeof isFridayAutoAcceptTime !== "function") return;
-
-  const due = isFridayAutoAcceptTime();
-  if (!due) return;
-
-  const wk = getBusinessWeekKeyNow();
-  if (!wk) return;
-
-  const lastWk = (window._lastCloseWeekKey || "").toString();
-  if (lastWk && lastWk === wk) return;
-
+window._maintenanceReady = false;
+window._maintenanceDue = true;
+db.ref("meta").on("value", snapshot => {
+  const meta = snapshot.val() || {};
+  window._maintenanceReady = true;
+  window._maintenanceDue = !meta.weekClosures?.[previousBusinessWeekKey()] || meta.lastHistoryCleanupDay !== todayIso();
+});
+window.runDueWeekSettlements = async function(reason = "auto_friday18") {
+  if (_autoCloseRunning) return false;
+  // Przeliczaj termin według aktualnego zegara, także bez nowego zdarzenia w bazie.
+  const latest = window.weekendSettlement?.weekKey;
+  if (window._maintenanceReady && !window._maintenanceDue && latest === previousBusinessWeekKey() && window._historyCleanupDay === todayIso()) return false;
   _autoCloseRunning = true;
-  const got = await acquireCloseLock();
-  if (!got) {
-    _autoCloseRunning = false;
-    return;
-  }
-
+  const now = Date.now();
   try {
-    try { await window.closePointRequestsOnWeekClose?.(wk); } catch (e) { console.error(e); }
-    try { await closePendingAppealsOnWeekClose(wk); } catch (e) { console.error(e); }
-    await closeWeekCore(wk, "auto_friday18");
-  } catch (e) {
-    console.error("autoCloseWeekIfDue error:", e);
+    const snapshot = await db.ref().once("value");
+    const initial = snapshot.val() || {};
+    if (!JulekSettlement.dueWeeks(initial, now).length && initial.meta?.lastHistoryCleanupDay === todayIso()) {
+      window._historyCleanupDay = todayIso();
+      return false;
+    }
+    const result = await db.ref().transaction(data => {
+      if (!data) return;
+      const weeks = JulekSettlement.dueWeeks(data, now);
+      if (!weeks.length && data.meta?.lastHistoryCleanupDay === todayIso()) return;
+      for (const key of weeks) JulekSettlement.settleWeek(data, key, now, reason);
+      JulekSettlement.purgeOldHistory(data, now);
+      return data;
+    }, undefined, false);
+    if (result.committed) window._historyCleanupDay = todayIso();
+    return !!result.committed;
   } finally {
-    await releaseCloseLock();
     _autoCloseRunning = false;
+  }
+};
+async function autoCloseWeekIfDue() {
+  try {
+    const changed = await window.runDueWeekSettlements();
+    setText("settlementStatus", "Rozliczenie: piątek 18:00 (Warszawa). Przy zamkniętej aplikacji zostanie nadrobione po jej otwarciu.");
+    return changed;
+  } catch (error) {
+    console.error("Błąd rozliczenia tygodnia:", error);
+    setText("settlementStatus", "Nie udało się zapisać rozliczenia. Sprawdź połączenie; aplikacja ponowi próbę.");
   }
 }
 
-/* ===================================================== */
-/* ================== WEEKEND: KPI + INFO =============== */
-/* ===================================================== */
-
-db.ref("weekend").on("value", s => {
-  const v = Number(s.val() || 0);
-
-  const showCounter = (typeof isWeekendCounterTime === "function") ? isWeekendCounterTime() : true;
-  const showMsg = shouldShowWeekendMessageNow();
-
-  const spR = document.getElementById("weekendR");
-  if (spR) {
-    const row = spR.closest("div");
-    if (row) row.style.display = showCounter ? "" : "none";
+function renderWeekendInfo() {
+  const result = window.weekendSettlement;
+  const show = shouldShowWeekendMessageNow();
+  const value = Number(result?.hours || 0);
+  for (const suffix of ["R", "J"]) {
+    const element = document.getElementById("weekend" + suffix);
+    if (!element) continue;
+    const row = element.closest(suffix === "J" ? ".julekKpi" : "div");
+    if (row) row.style.display = show ? "" : "none";
+    element.innerText = show ? formatHours(value) : "0";
   }
-
-  const spJ = document.getElementById("weekendJ");
-  if (spJ) {
-    const kpi = spJ.closest(".julekKpi");
-    if (kpi) kpi.style.display = showCounter ? "" : "none";
+  let message = value > 0
+    ? `JULEK W TEN WEEKEND MOŻE KORZYSTAĆ Z KOMPUTERA PRZEZ ${formatHours(value)} GODZIN.`
+    : value < 0 ? `JULEK W TEN WEEKEND MA DO ODPRACOWANIA ${formatHours(Math.abs(value))} GODZIN.`
+    : "JULEK W TEN WEEKEND NIE MA GODZIN DO WYKORZYSTANIA.";
+  for (const suffix of ["Parent", "Julek"]) {
+    document.getElementById("weekendInfo" + suffix)?.classList.toggle("hidden", !show);
+    setText("weekendInfoText" + suffix, show ? message : "");
+    setText("weekendInfoDate" + suffix, show
+      ? `Wynik tygodnia: ${formatHours(result.earnedHours)} h; bonus: ${formatHours(result.bonusHours)} h. Obowiązuje do końca niedzieli.` : "");
   }
-
-  if (showCounter) {
-    setText("weekendR", formatHours(v));
-    setText("weekendJ", formatHours(v));
-  }
-
-  const boxR = document.getElementById("weekendInfoParent");
-  const boxJ = document.getElementById("weekendInfoJulek");
-  if (boxR) boxR.classList.toggle("hidden", !showMsg);
-  if (boxJ) boxJ.classList.toggle("hidden", !showMsg);
-
-  function msgFor(val) {
-    if (val > 0) return `JULEK W BIEŻĄCY WEEKEND MOŻE KORZYSTAĆ Z KOMPUTERA PRZEZ ${formatHours(val)} GODZIN.`;
-    if (val < 0) return `JULEK W BIEŻĄCY WEEKEND MA DO ODPRACOWANIA NA RZECZ RODZICÓW ${formatHours(Math.abs(val))} GODZIN.`;
-    return `JULEK W BIEŻĄCY WEEKEND NIE MA GODZIN DO WYKORZYSTANIA.`;
-  }
-
-  if (showMsg) {
-    const t = msgFor(v);
-    const tR = document.getElementById("weekendInfoTextParent");
-    const tJ = document.getElementById("weekendInfoTextJulek");
-    if (tR) tR.innerText = t;
-    if (tJ) tJ.innerText = t;
-
-    const dLine = "Obowiązuje do końca niedzieli.";
-    const dR = document.getElementById("weekendInfoDateParent");
-    const dJ = document.getElementById("weekendInfoDateJulek");
-    if (dR) dR.innerText = dLine;
-    if (dJ) dJ.innerText = dLine;
-  }
-});
+}
 
 /* ================== CACHE: LOGI ================== */
 db.ref("log").on("value", s => {
@@ -1082,7 +921,8 @@ window.processAutoAcceptAppeals = async function () {
       const shouldByDeadline = deadlineDay && today && (today > deadlineDay);
 
       const appealBW = businessWeekKeyForAppeal(o);
-      const shouldByFriday = !!fridayAuto && !!currentBW && !!appealBW && (appealBW === currentBW);
+      if (appealBW && appealBW < currentBW) continue;
+      const shouldByFriday = false;
 
       if (!shouldByDeadline && !shouldByFriday) continue;
 
@@ -1166,25 +1006,22 @@ window.onAfterLogin = function () {
   window.processAutoAcceptPointRequests?.();
 };
 
-/* ================== TIMER ================== */
-setInterval(() => {
-  try {
-    window.processAutoAcceptAppeals?.();
-    window.processAutoAcceptPointRequests?.();
-    autoCloseWeekIfDue?.();
-    window.pointRequestsActive = computeActivePointRequests(window.pointRequestsAll);
-    recomputeSummaryTiles();
-  } catch (e) {
-    console.error(e);
-  }
-}, 60 * 1000);
-
-/* ================== INIT ADMIN PUBLIC (LOGIN) ================== */
-window.addEventListener("load", function () {
-  if (typeof window.initAdminPublicNotes === "function") {
-    window.initAdminPublicNotes();
-  }
-
+/* Zegar aktualizuje również widok bez zmiany danych i po wybudzeniu telefonu. */
+async function refreshTimedState() {
+  await autoCloseWeekIfDue();
+  await window.processAutoAcceptAppeals?.();
+  await window.processAutoAcceptPointRequests?.();
+  window.pointRequestsActive = computeActivePointRequests(window.pointRequestsAll);
   recomputeSummaryTiles();
-  setTimeout(() => { try { autoCloseWeekIfDue?.(); } catch (e) {} }, 1500);
+  renderWeekendInfo();
+  renderAll();
+}
+setInterval(() => { refreshTimedState().catch(console.error); }, 15 * 1000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshTimedState().catch(console.error);
+});
+window.addEventListener("focus", () => { refreshTimedState().catch(console.error); });
+window.addEventListener("load", () => {
+  window.initAdminPublicNotes?.();
+  refreshTimedState().catch(console.error);
 });
