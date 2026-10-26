@@ -18,9 +18,10 @@
 <body>
 
 <!-- ===== BANER AKTUALIZACJI (PC) ===== -->
-<div id="updateBanner" class="hidden">
-  <span>🔄 Nowa wersja aplikacji – odśwież</span>
-  <button onclick="forceDesktopUpdate()">Odśwież teraz</button>
+<div id="updateBanner" class="hidden" role="status" aria-live="polite">
+  <span id="updateMessage">Dostępna jest nowa wersja aplikacji.</span>
+  <button id="updateNow" onclick="forceDesktopUpdate()">Aktualizuj</button>
+  <button id="updateLater" onclick="deferAppUpdate()">Później</button>
 </div>
 
 <h1>
@@ -105,7 +106,7 @@
 
     <div class="row" style="margin-top:8px;">
       <button id="btnAdmin" class="hidden" onclick="openAdmin()">Zmiany administracyjne</button>
-      <span class="muted">Auto-zamknięcie: piątek 18:00 (Warszawa) — wykona się, gdy ktoś ma otwartą apkę albo wejdzie po czasie.</span>
+      <span id="settlementStatus" class="muted">Rozliczenie: piątek 18:00 (Warszawa). Przy zamkniętej aplikacji zostanie nadrobione po jej otwarciu.</span>
     </div>
   </div>
 
@@ -177,7 +178,7 @@
     </div>
 
     <div class="row" style="margin-top:10px;">
-      <button onclick="zamknijTydzien()">Zamknij tydzień</button>
+      <button onclick="zamknijTydzien()">Ponów zaległe rozliczenie</button>
       <button class="btnRed" onclick="resetAllDataFromAdmin()">RESET (start od zera)</button>
       <button class="btnGreen" onclick="saveAndCloseAdmin()">Zapisz i zamknij zmiany administracyjne</button>
     </div>
@@ -245,7 +246,7 @@
 
   <div class="box">
     <h3>Aktualny tydzień – log (rodzic)</h3>
-    <button class="smallbtn" onclick="toggleWeekLogs()">Pozostałe dni tygodnia</button>
+    <button class="smallbtn" onclick="toggleWeekLogs()">Historia – ostatnie 14 dni</button>
 
     <div class="muted">Usuwanie: tylko wpisy z dzisiaj i tylko autor wpisu (drugi rodzic ma przycisk nieaktywny).</div>
     <ul id="logR"></ul>
@@ -290,11 +291,11 @@
   </div>
 
   <div class="box">
-    <h3>Aktualny tydzień – za co</h3>
+    <h3>Wpisy – ostatnie 14 dni</h3>
 
     <div class="row" style="margin-bottom:8px;">
       <button class="btnGreen" onclick="wniosekOPunkt()">Wniosek o punkt</button>
-      <button class="smallbtn" onclick="toggleWeekLogs()">Pozostałe dni tygodnia</button>
+      <button class="smallbtn" onclick="toggleWeekLogs()">Historia – ostatnie 14 dni</button>
     </div>
 
     <ul id="logJ"></ul>
@@ -305,7 +306,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
+<script src="./js/settings.js"></script>
 <script src="./js/time.js"></script>
+<script src="./js/settlement.js"></script>
 <script src="./js/auth.js"></script>
 <script src="./js/state.js"></script>
 <script src="./js/render.js"></script>
@@ -313,12 +316,7 @@
 <script src="./js/parent.js"></script>
 <script src="./js/child.js"></script>
 <script src="./js/admin.js"></script>
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
-</script>
--->
+<script src="./js/updates.js"></script>
 
 </body>
 </html>
