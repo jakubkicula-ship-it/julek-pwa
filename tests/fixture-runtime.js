@@ -44,7 +44,9 @@
       once:async()=>snapshot(clone(at(path))),
       transaction:async(fn)=>{
         // Tak jak w Firebase callback może zostać uruchomiony ponownie.
-        fn(clone(at(path)));
+        // Pierwsze wywołanie na korzeniu może mieć null mimo wcześniejszego once().
+        const first=fn(path==='' ? null : clone(at(path)));
+        if(first===undefined) return {committed:false,snapshot:snapshot(clone(at(path)))};
         const result=fn(clone(at(path)));
         if(result===undefined) return {committed:false,snapshot:snapshot(clone(at(path)))};
         set(path,result);emit();return {committed:true,snapshot:snapshot(clone(at(path)))};
