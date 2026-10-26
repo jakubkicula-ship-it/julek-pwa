@@ -1,0 +1,6 @@
+backups/
+private-audit/
+node_modules/
+__pycache__/
+.firebase-cli-cache/
+firebase-debug.log
