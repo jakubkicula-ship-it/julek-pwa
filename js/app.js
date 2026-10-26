@@ -838,7 +838,9 @@ window.runDueWeekSettlements = async function(reason = "auto_friday18") {
       return false;
     }
     const result = await db.ref().transaction(data => {
-      if (!data) return;
+      // Firebase może zacząć od pustej lokalnej pamięci. Zwrócenie undefined
+      // przerywa transakcję, zamiast pobrać dane serwera i ponowić obliczenia.
+      if (!data) data = {};
       const weeks = JulekSettlement.dueWeeks(data, now);
       if (!weeks.length && data.meta?.lastHistoryCleanupDay === todayIso()) return;
       for (const key of weeks) JulekSettlement.settleWeek(data, key, now, reason);
