@@ -1,6 +1,6 @@
 /* Plik działa w workerze: bez window i bez dostępu do panelu administratora. */
 importScripts("./js/settings.js");
-const CACHE = "julek-pwa-" + JULEK_SETTINGS.version;
+const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-r1";
 const FILES = ["./", "./index.html", "./manifest.json", "./css/style.css",
   "./js/settings.js", "./js/time.js", "./js/settlement.js", "./js/auth.js",
   "./js/state.js", "./js/render.js", "./js/app.js", "./js/parent.js", "./js/child.js",
