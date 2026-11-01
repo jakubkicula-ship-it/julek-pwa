@@ -17,7 +17,7 @@ vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),context);
   let work;events.install({waitUntil:p=>work=p});await work;
   for(const file of added)assert.ok(fs.existsSync(path.join(root,file)),file);
   events.activate({waitUntil:p=>work=p});await work;
-  assert.deepEqual(deleted,['julek-pwa-old','julek-pwa-2.2.0']);assert.equal(claimed,true);
+  assert.deepEqual(deleted,['julek-pwa-old','julek-pwa-2.2.0','julek-pwa-2.2.0-r1']);assert.equal(claimed,true);
   events.message({data:{type:'SKIP_WAITING'}});assert.equal(skipped,true);
   const request={method:'GET',url:'https://example.test/julek-pwa/index.html'};
   const response={ok:true};cached.set(request.url,response);
