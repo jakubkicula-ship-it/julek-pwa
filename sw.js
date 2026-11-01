@@ -1,7 +1,8 @@
 /* Plik działa w workerze: bez window i bez dostępu do panelu administratora. */
 importScripts("./js/settings.js");
 const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-r1";
-const FILES = ["./", "./index.html", "./manifest.json", "./css/style.css",
+const FILES = ["./", "./index.html", "./manifest.json", "./css/style.css", "./css/week-result.css",
+  "./js/week-result.js", "./js/week-result-client.js", "./tada.mp3", "./sad-trombone.mp3",
   "./js/settings.js", "./js/time.js", "./js/settlement.js", "./js/auth.js",
   "./js/state.js", "./js/render.js", "./js/app.js", "./js/parent.js", "./js/child.js",
   "./js/admin.js", "./js/updates.js", "./icon-192v2.png", "./icon-512v2.png"];
