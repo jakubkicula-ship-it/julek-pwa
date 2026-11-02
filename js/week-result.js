@@ -6,7 +6,7 @@
 })(typeof window !== "undefined" ? window : globalThis,function(){
   "use strict";
   function model(summary){
-    if(!summary || !/^\d{4}-BW-\d{2}-\d{2}$/.test(summary.weekKey) || !Number.isFinite(summary.earnedHours) || !Number.isFinite(summary.hours) || !Number.isFinite(summary.closedAt) || summary.closedAt <= 0) return null;
+    if(!summary || !/^(?:\d{4}-BW-\d{2}-\d{2}|V3-\d+)$/.test(summary.weekKey) || !Number.isFinite(summary.earnedHours) || !Number.isFinite(summary.hours) || !Number.isFinite(summary.closedAt) || summary.closedAt <= 0) return null;
     const n=summary.earnedHours;
     return {
       id:summary.weekKey,
