@@ -6,7 +6,7 @@ const base=path.resolve(__dirname,'..');
 const root=fs.existsSync(path.join(base,'app')) ? path.join(base,'app') : base;
 const events={};const cached=new Map();let deleted=[];let added=[];let claimed=false;let skipped=false;
 const cache={addAll:async files=>{added=files;},match:async request=>cached.get(request.url),put:async(request,response)=>cached.set(request.url,response)};
-const context=vm.createContext({URL,console,
+const context=vm.createContext({URL,Request,console,
   caches:{open:async()=>cache,keys:async()=>['julek-pwa-old','unrelated-cache','julek-pwa-2.2.0','julek-pwa-2.2.0-r1'],delete:async key=>deleted.push(key)},
   fetch:async()=>{throw new Error('offline');},
   self:{location:{origin:'https://example.test'},registration:{scope:'https://example.test/julek-pwa/'},clients:{claim:async()=>{claimed=true;}},skipWaiting:()=>{skipped=true;},addEventListener:(type,fn)=>{events[type]=fn;}}
@@ -15,7 +15,11 @@ context.importScripts=file=>vm.runInContext(fs.readFileSync(path.join(root,file)
 vm.runInContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),context);
 (async()=>{
   let work;events.install({waitUntil:p=>work=p});await work;
-  for(const file of added)assert.ok(fs.existsSync(path.join(root,file)),file);
+  for(const request of added){
+    assert.equal(request.cache,'reload','Każdy plik nowej wersji pomija stary cache HTTP');
+    const file=new URL(request.url).pathname.replace('/julek-pwa/','')||'index.html';
+    assert.ok(fs.existsSync(path.join(root,file)),file);
+  }
   events.activate({waitUntil:p=>work=p});await work;
   assert.deepEqual(deleted,['julek-pwa-old','julek-pwa-2.2.0','julek-pwa-2.2.0-r1']);assert.equal(claimed,true);
   events.message({data:{type:'SKIP_WAITING'}});assert.equal(skipped,true);
