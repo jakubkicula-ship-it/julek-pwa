@@ -1,6 +1,6 @@
 /* Plik działa w workerze: bez window i bez dostępu do panelu administratora. */
 importScripts("./js/settings.js");
-const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-alpha7-approved-icon";
+const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-alpha8-withdrawal";
 const FILES = ["./", "./index.html", "./manifest.json", "./css/style.css", "./css/week-result.css",
   "./css/v3-style.css", "./css/v3-refinements.css", "./css/v3-additions.css", "./css/v3-live.css",
   "./js/v3-icons.js", "./js/v3-app.js", "./js/v3-domain.js", "./js/v3-calendar.js", "./js/v3-extras.js", "./js/v3-history-model.js", "./js/v3-history-ui.js", "./js/v3-alarm.js", "./js/v3-dashboard.js", "./js/v3-documents.js", "./css/v3-dashboard.css", "./css/v3-history.css", "./icon-v3.svg", "./icon-64-approved-v3.png", "./icon-180-approved-v3.png", "./icon-192-approved-v3.png", "./icon-512-approved-v3.png", "./icon-512-approved-maskable-v3.png", "./icon-192v3.png", "./icon-512v3.png",
