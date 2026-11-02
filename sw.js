@@ -1,6 +1,6 @@
 /* Plik działa w workerze: bez window i bez dostępu do panelu administratora. */
 importScripts("./js/settings.js");
-const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-alpha4";
+const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-alpha5";
 const FILES = ["./", "./index.html", "./manifest.json", "./css/style.css", "./css/week-result.css",
   "./css/v3-style.css", "./css/v3-refinements.css", "./css/v3-additions.css", "./css/v3-live.css",
   "./js/v3-icons.js", "./js/v3-app.js", "./js/v3-domain.js", "./js/v3-calendar.js", "./js/v3-extras.js", "./js/v3-history-model.js", "./js/v3-history-ui.js", "./js/v3-alarm.js", "./js/v3-dashboard.js", "./js/v3-documents.js", "./css/v3-dashboard.css", "./css/v3-history.css", "./icon-v3.svg", "./icon-192v3.png", "./icon-512v3.png",
@@ -9,7 +9,10 @@ const FILES = ["./", "./index.html", "./manifest.json", "./css/style.css", "./cs
   "./js/state.js", "./js/render.js", "./js/app.js", "./js/parent.js", "./js/child.js",
   "./js/admin.js", "./js/updates.js", "./icon-192v2.png", "./icon-512v2.png"];
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)));
+  // Nowa wersja musi pobrać każdy plik z sieci, pomijając stary cache HTTP.
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(
+    FILES.map(file => new Request(new URL(file, self.registration.scope), {cache:"reload"}))
+  )));
 });
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
