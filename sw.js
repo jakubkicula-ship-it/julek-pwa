@@ -2,7 +2,7 @@
 importScripts("./js/settings.js");
 const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-r1";
 const FILES = ["./", "./index.html", "./manifest.json", "./css/style.css", "./css/week-result.css",
-  "./js/week-result.js", "./js/week-result-client.js", "./tada.mp3", "./sad-trombone.mp3",
+  "./js/push-config.js", "./js/push.js", "./js/week-result.js", "./js/week-result-client.js", "./tada.mp3", "./sad-trombone.mp3",
   "./js/settings.js", "./js/time.js", "./js/settlement.js", "./js/auth.js",
   "./js/state.js", "./js/render.js", "./js/app.js", "./js/parent.js", "./js/child.js",
   "./js/admin.js", "./js/updates.js", "./icon-192v2.png", "./icon-512v2.png"];
@@ -37,5 +37,29 @@ self.addEventListener("fetch", event => {
     } catch(error) {
       throw error;
     }
+  })());
+});
+
+/* Push never changes point balances and never plays background audio. */
+self.addEventListener("push",event=>{
+  event.waitUntil((async()=>{
+    let data={title:"Punkty Julka",body:"Nowe powiadomienie"};
+    try{if(event.data)data={...data,...event.data.json()};}catch(_){}
+    // Click targets remain inside this PWA, even if a payload is malformed.
+    const url=new URL("./",self.registration.scope);
+    await self.registration.showNotification(String(data.title).slice(0,120),{
+      body:String(data.body).slice(0,300),icon:"icon-192v2.png",badge:"icon-192v2.png",
+      tag:data.id||undefined,data:{url:url.href}
+    });
+  })());
+});
+self.addEventListener("notificationclick",event=>{
+  event.notification.close();
+  event.waitUntil((async()=>{
+    const scope=self.registration.scope;
+    for(const client of await self.clients.matchAll({type:"window",includeUncontrolled:true})){
+      if(client.url.startsWith(scope)){await client.focus();return;}
+    }
+    return self.clients.openWindow(scope);
   })());
 });

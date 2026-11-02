@@ -95,6 +95,7 @@
 
 <!-- ================= PANEL RODZIC ================= -->
 <div id="rodzic" class="panel">
+  <button type="button" class="smallbtn" data-push-role="parent" onclick="openPushSettings()" hidden>🔔 Włącz powiadomienia</button>
 
   <div class="box">
     <div><b>Zalogowany rodzic:</b> <span id="rodzicName"></span></div>
@@ -269,6 +270,7 @@
 
 <!-- ================= PANEL JULEK ================= -->
 <div id="julek" class="panel">
+  <button type="button" class="smallbtn" data-push-role="child" onclick="openPushSettings()" hidden>🔔 Włącz powiadomienia</button>
   <div class="box">
     <div class="julekSummaryRow">
       <div class="julekKpi">
@@ -320,6 +322,8 @@
 <script src="./js/updates.js"></script>
 <script src="./js/week-result.js"></script>
 <script src="./js/week-result-client.js"></script>
+<script src="./js/push-config.js"></script>
+<script src="./js/push.js"></script>
 
 </body>
 </html>
