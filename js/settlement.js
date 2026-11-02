@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
   const status = value => String(value || "pending").trim().toLowerCase();
-  const stamp = value => Number(value?.createdAt ?? value?.created_at ?? 0);
+  const stamp = value => Number(value?.eventAt ?? value?.createdAt ?? value?.created_at ?? 0);
   const comment = value => String(value.child_comment || value.childComment || value.komentarzDziecka || "").trim().replace(/\s+/g, " ");
   const dateOf = value => value.data || (stamp(value) ? warsawDateIso(stamp(value)) : "");
   const keyOf = (date, ts) => ts ? businessWeekKeyFromTs(ts) : businessWeekKeyFromIsoDate(date);
@@ -26,7 +26,7 @@
     for (const appeal of Object.values(data.odwolania || {})) {
       if (status(appeal.status) === "pending") keys.add(keyOf(appeal.data, stamp(appeal)));
     }
-    return [...keys].filter(key => key && key < current && !data.meta?.weekClosures?.[key]).sort();
+    return [...keys].filter(key => key && businessWeekBounds(key)?.end <= now && !data.meta?.weekClosures?.[key]).sort((a,b)=>businessWeekBounds(a).start-businessWeekBounds(b).start);
   }
 
   function settleWeek(data, key, now, reason) {
@@ -67,8 +67,8 @@
       if (!duplicate) {
         const logId = existing?.[0] || request.logKey || `settled_${id}`;
         if (!existing) day[logId] = {
-          h: 1, opis: `Wniosek Julka: ${comment(request)} (zaakceptowane automatycznie)`,
-          rodzic: "system", category: "wniosek_punkt", ts: stamp(request) || warsawTimestamp(date, 12), prKey: id, fingerprint: fp
+          h: Number(request.points ?? 1), opis: request.title || `Wniosek Julka: ${comment(request)} (zaakceptowane automatycznie)`,
+          rodzic: "system", category: request.category || "wniosek_punkt", ts: stamp(request) || warsawTimestamp(date, 12), eventAt:stamp(request) || warsawTimestamp(date,12), createdAt:request.createdAt || request.created_at || now, acceptedAt:now, prKey: id, fingerprint: fp, note:comment(request)
         };
         request.applied = true;
         request.logKey = logId;
