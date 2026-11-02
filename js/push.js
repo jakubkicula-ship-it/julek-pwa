@@ -37,17 +37,15 @@
         if(choice!=='1'&&choice!=='2')return;
         action=choice==='2'?'disable':'test';
       }
-      const code=await window.askPinMasked(`Kod powiadomień — ${r}:`);
-      if(code===null||!code)return;
       if(action==='disable'){
-        await api({action,role:r,code,subscription:old.toJSON()});
+        await api({action,role:r,subscription:old.toJSON()});
         await old.unsubscribe();remember(null);update();return alert('Powiadomienia wyłączone na tym telefonie.');
       }
       if(Notification.permission==='denied')return alert('Powiadomienia są zablokowane. Zezwól na nie w ustawieniach tej strony lub aplikacji.');
       if(await Notification.requestPermission()!=='granted')return alert('Nie udzielono zgody na powiadomienia.');
       const {publicKey:serverKey}=await api();
       const subscription=old||await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:publicKey(serverKey)});
-      try{await api({action,role:r,code,subscription:subscription.toJSON()});}
+      try{await api({action,role:r,subscription:subscription.toJSON()});}
       catch(error){if(!old)await subscription.unsubscribe();throw error;}
       remember(r);update();alert('Wysłano powiadomienie testowe. Sprawdź powiadomienia telefonu.');
     }catch(error){alert(error.message||'Nie udało się włączyć powiadomień.');}
