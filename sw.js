@@ -1,9 +1,9 @@
 /* Plik działa w workerze: bez window i bez dostępu do panelu administratora. */
 importScripts("./js/settings.js");
-const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-alpha8-withdrawal";
-const FILES = ["./", "./index.html", "./manifest.json", "./css/style.css", "./css/week-result.css",
+const CACHE = "julek-pwa-" + JULEK_SETTINGS.version + "-beta3-final";
+const FILES = ["./js/v3-layout.js", "./css/v3-layout.css", "./", "./index.html", "./manifest.json", "./css/style.css", "./css/week-result.css",
   "./css/v3-style.css", "./css/v3-refinements.css", "./css/v3-additions.css", "./css/v3-live.css",
-  "./js/v3-icons.js", "./js/v3-app.js", "./js/v3-domain.js", "./js/v3-calendar.js", "./js/v3-extras.js", "./js/v3-history-model.js", "./js/v3-history-ui.js", "./js/v3-alarm.js", "./js/v3-dashboard.js", "./js/v3-documents.js", "./css/v3-dashboard.css", "./css/v3-history.css", "./icon-v3.svg", "./icon-64-approved-v3.png", "./icon-180-approved-v3.png", "./icon-192-approved-v3.png", "./icon-512-approved-v3.png", "./icon-512-approved-maskable-v3.png", "./icon-192v3.png", "./icon-512v3.png",
+  "./js/v3-icons.js", "./js/v3-app.js", "./js/v3-domain.js", "./js/v3-calendar.js", "./js/v3-extras.js", "./js/v3-history-model.js", "./js/v3-history-ui.js", "./js/v3-alarm.js", "./js/v3-dashboard.js", "./js/v3-documents.js", "./css/v3-dashboard.css", "./css/v3-history.css", "./icon-v3.svg", "./icon-64-beta.png", "./icon-180-beta.png", "./icon-192-beta.png", "./icon-512-beta.png", "./icon-512-beta-maskable.png", "./icon-192v3.png", "./icon-512v3.png",
   "./js/push-config.js", "./js/push.js", "./js/week-result.js", "./js/week-result-client.js", "./tada.mp3", "./sad-trombone.mp3",
   "./js/settings.js", "./js/time.js", "./js/settlement.js", "./js/auth.js",
   "./js/state.js", "./js/render.js", "./js/app.js", "./js/parent.js", "./js/child.js",
@@ -49,12 +49,12 @@ self.addEventListener("fetch", event => {
 /* Push never changes point balances and never plays background audio. */
 self.addEventListener("push",event=>{
   event.waitUntil((async()=>{
-    let data={title:"Punkty Julka",body:"Nowe powiadomienie"};
+    let data={title:"Zadania Julka",body:"Nowe powiadomienie"};
     try{if(event.data)data={...data,...event.data.json()};}catch(_){}
     // Click targets remain inside this PWA, even if a payload is malformed.
     const url=new URL("./",self.registration.scope);
     await self.registration.showNotification(String(data.title).slice(0,120),{
-      body:String(data.body).slice(0,300),icon:"icon-192-approved-v3.png",badge:"icon-192-approved-v3.png",silent:data.silent===true,
+      body:String(data.body).slice(0,300),icon:"icon-192-beta.png",badge:"icon-192-beta.png",silent:data.silent===true,
       tag:data.id||undefined,data:{url:url.href}
     });
   })());

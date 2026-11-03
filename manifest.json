@@ -1,5 +1,5 @@
 {
-  "name": "Punkty Julka",
+  "name": "Zadania Julka",
   "short_name": "Julka",
   "start_url": "/julek-pwa/index.html",
   "scope": "/julek-pwa/",
@@ -8,19 +8,19 @@
   "theme_color": "#215744",
   "icons": [
     {
-      "src": "icon-192-approved-v3.png",
+      "src": "icon-192-beta.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512-approved-v3.png",
+      "src": "icon-512-beta.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512-approved-maskable-v3.png",
+      "src": "icon-512-beta-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
