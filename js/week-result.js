@@ -15,7 +15,7 @@
       score:`${n>0?"+":""}${n.toLocaleString("pl-PL")} h`,
       title:n>0?"Brawo, Julek!":n<0?"Tym razem na minusie":"Tydzień na zero",
       message:n>0?"Gratulacje! Dobra robota. Oby tak dalej!":n<0?"Chyba musisz się bardziej postarać. Pilnuj codziennych obowiązków — mycia zębów i zmywarki.":"Nowy tydzień to nowa szansa. Pilnuj obowiązków i zbieraj punkty!",
-      weekend:n>0?`Czas na komputer w weekend: ${summary.hours.toLocaleString("pl-PL")} h (w tym bonus ${summary.bonusHours.toLocaleString("pl-PL")} h).`:n<0?"Powodzenia, staraj się dalej! A tymczasem do roboty w weekend.":`Czas na komputer w weekend: ${summary.hours.toLocaleString("pl-PL")} h (bonus).`
+      weekend:n>0?`Czas na komputer po rozliczeniu: ${summary.hours.toLocaleString("pl-PL")} h (w tym bonus ${summary.bonusHours.toLocaleString("pl-PL")} h).`:n<0?"Powodzenia, staraj się dalej! A tymczasem czas na odpracowanie godzin.":`Czas na komputer po rozliczeniu: ${summary.hours.toLocaleString("pl-PL")} h (bonus).`
     };
   }
   function shouldShow(summary,{child,mobile,seen,lastShown}){
