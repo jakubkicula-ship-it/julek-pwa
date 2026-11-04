@@ -95,6 +95,7 @@
     const bonus = sum >= 0 ? root.JULEK_SETTINGS.weekendBonus : 0;
     const result = { weekKey: key, startAt: bounds.start, endAt: bounds.end, closedAt: now,
       earnedHours: sum, bonusHours: bonus, hours: sum + bonus, reason };
+    if(typeof resultDisplayUntil==="function")result.displayUntil=resultDisplayUntil(result);
     data.meta.weekClosures[key] = result;
     // Wykonanie zaległego rozliczenia w poniedziałek nie przedłuża weekendu.
     if (!data.meta.weekendSettlement || data.meta.weekendSettlement.endAt <= result.endAt) {
