@@ -1,7 +1,7 @@
 /* Wspólne ustawienia aplikacji i service workera. */
 globalThis.JULEK_SETTINGS = Object.freeze({
   version: "3.0",
-  versionLabel: "3.0 Gamma (testowa)",
+  versionLabel: "3.0 Delta (testowa)",
   historyDays: 14,
   weekendBonus: 2
 });
