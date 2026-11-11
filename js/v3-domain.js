@@ -23,7 +23,46 @@
   function canRetract(data,day,id,role,now=Date.now()){const l=data.log?.[day]?.[id];if(!parentRoles(data).includes(role)||!l||l.rodzic!==role)return false;const r=l.prKey?data.wnioski_punkty?.[l.prKey]:null;if(l.prKey&&!['accepted','accepted_auto'].includes(r?.status))return false;const at=Number(l.prKey?(l.acceptedAt||r?.decyzjaAt||r?.decided_at||0):(l.createdAt||l.ts||0));return at>0?warsawDateIso(at)===warsawDateIso(now):!l.prKey&&day===warsawDateIso(now);}
   function logStamp(date,log){return Number(log.eventAt||log.ts||warsawTimestamp(date,12));}
   function requestStamp(r){return Number(r.eventAt||r.createdAt||r.created_at||warsawTimestamp(r.data,12));}
+  function appealAuthor(data, appeal) {
+    return data.log?.[appeal.data]?.[appeal.logId]?.rodzic || '';
+  }
+  function appealDeadline(data, appeal) {
+    const created = Number(appeal.createdAt || appeal.created_at);
+    const day = appeal.deadlineDay || (created > 0 && Number.isFinite(created)
+      ? isoDateShift(warsawDateIso(created), 1) : '');
+    const log = data.log?.[appeal.data]?.[appeal.logId];
+    const eventAt = log ? logStamp(appeal.data, log) : requestStamp(appeal);
+    const weekEnd = businessWeekBounds(businessWeekKeyFromTs(eventAt))?.end;
+    const deadline = /^\d{4}-\d{2}-\d{2}$/.test(day)
+      ? warsawTimestamp(isoDateShift(day, 1), 0) : Infinity;
+    return Math.min(deadline, weekEnd || Infinity);
+  }
+  function canDecideAppeal(data, appeal, role, now = Date.now()) {
+    return appeal?.status === 'pending' && parentRoles(data).includes(role)
+      && root.JulekAccess.allowed(data.usersV3, role, 'appeals')
+      && appealAuthor(data, appeal) === role && now < appealDeadline(data, appeal);
+  }
   function sum(data,start,end){let value=0;for(const [date,logs]of Object.entries(data.log||{}))for(const [id,l]of Object.entries(logs||{})){const ts=logStamp(date,l);if(ts>=start&&ts<end)value+=root.JulekSettlement.effectiveHours(data,date,id,l);}return value;}
   function dayAllowed(day,now){return day===warsawDateIso(now)||day===isoDateShift(warsawDateIso(now),-1);}
-  root.JulekV3={defaults,config,validateConfig,choose,validHours,requireValue,parentRoles,sourceInactive,canRetract,logStamp,requestStamp,sum,dayAllowed};
+  function announcements(data, role, now = Date.now()) {
+    const school = root.JulekSchool;
+    const events = school.visible(data.schoolEventsV3, role, now).map(event => ({
+      text: event.title,
+      source: school.providerNames[event.provider || 'mobidziennik'] || 'Dziennik szkolny',
+      label: school.labels[event.type] || 'Wydarzenie szkolne',
+      subject: event.subject || '',
+      dueDate: event.dueDate,
+      expiresAt: warsawTimestamp(isoDateShift(event.dueDate, 1), 0),
+    }));
+    const notes = Object.entries(data.meta?.adminNotes || {})
+      .filter(([, note]) => !note.hidden && note.text)
+      .sort(([, a], [, b]) => b.ts - a.ts)
+      .map(([id, note]) => {
+        const author = note.author || data.historyV3?.['note_' + id]?.author || 'Kuba';
+        return {text: note.text, ts: note.ts,
+          source: data.usersV3?.[author]?.name || data.guardiansV3?.[author]?.name || author};
+      });
+    return [...events, ...notes];
+  }
+  root.JulekV3={announcements,defaults,config,validateConfig,choose,validHours,requireValue,parentRoles,sourceInactive,canRetract,appealAuthor,appealDeadline,canDecideAppeal,logStamp,requestStamp,sum,dayAllowed};
 })(globalThis);

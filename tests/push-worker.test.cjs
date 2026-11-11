@@ -19,3 +19,13 @@ test('background push is visible, has a stable tag, and click remains within app
   opened=null;handlers.notificationclick({notification:{close(){}},waitUntil:p=>task=p});await task;
   assert.equal(focused,true);assert.equal(opened,null);
 });
+
+test('persistent reminder needs explicit receipt; opening and closing do not acknowledge it',async()=>{
+ const handlers={},receipts=[];let notification,posted=0,task;
+ const context=vm.createContext({URL,Date,importScripts(){},JULEK_SETTINGS:{version:'3.0'},JulekAlertStore:{all:async()=>receipts,put:async r=>receipts.push(r),synced:async id=>{receipts.find(r=>r.id===id).synced=true;}},fetch:async()=>{posted++;return{ok:true};},self:{registration:{scope:'https://example.test/julek-pwa/',showNotification:async(title,opts)=>notification=opts},location:{origin:'https://example.test'},addEventListener:(name,fn)=>handlers[name]=fn,clients:{matchAll:async()=>[],openWindow:async()=>{}}}});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../sw.js'),'utf8'),context);
+ handlers.push({data:{json:()=>({kind:'reminders',requiresAck:true,reminderEvent:'r',ackToken:'test-token'})},waitUntil:p=>task=p});await task;
+ assert.equal(notification.requireInteraction,true);assert.equal(notification.actions[0].title,'Odebrałem');assert.equal(posted,0);
+ handlers.notificationclick({action:'open',notification:{data:notification.data,close(){}},waitUntil:p=>task=p});await task;assert.equal(receipts.length,0);assert.equal(posted,0);
+ handlers.notificationclick({action:'received',notification:{data:notification.data,close(){}},waitUntil:p=>task=p});await task;assert.equal(receipts.length,1);assert.equal(receipts[0].synced,true);assert.equal(posted,1);
+});

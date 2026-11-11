@@ -21,7 +21,7 @@
       for (const log of Object.values(logs || {})) keys.add(keyOf(date, Number(log.ts || 0)));
     }
     for (const request of Object.values(data.wnioski_punkty || {})) {
-      if (status(request.status) === "pending") keys.add(keyOf(dateOf(request), stamp(request)));
+      if (!request.requiresParentApproval && status(request.status) === "pending") keys.add(keyOf(dateOf(request), stamp(request)));
     }
     for (const appeal of Object.values(data.odwolania || {})) {
       if (status(appeal.status) === "pending") keys.add(keyOf(appeal.data, stamp(appeal)));
@@ -41,7 +41,7 @@
     const requests = Object.entries(data.wnioski_punkty || {}).sort((a,b) => stamp(a[1]) - stamp(b[1]) || a[0].localeCompare(b[0]));
     for (const [id, request] of requests) {
       const date = dateOf(request);
-      if (keyOf(date, stamp(request)) !== key || status(request.status) !== "pending") continue;
+      if (request.requiresParentApproval || keyOf(date, stamp(request)) !== key || status(request.status) !== "pending") continue;
       const day = data.log[date] = data.log[date] || {};
       const fp = request.fingerprint || `${date}|${comment(request).toLowerCase()}`;
       const existing = Object.entries(day).find(([, log]) => log.prKey === id) ||
@@ -115,7 +115,7 @@
       for (const date of Object.keys(data[node] || {})) if (old(date)) delete data[node][date];
     }
     for (const [id, request] of Object.entries(data.wnioski_punkty || {})) {
-      if (old(dateOf(request))) delete data.wnioski_punkty[id];
+      if (!(request.requiresParentApproval && status(request.status) === "pending") && old(dateOf(request))) delete data.wnioski_punkty[id];
     }
     for (const [id, appeal] of Object.entries(data.odwolania || {})) {
       if (old(appeal.data || (stamp(appeal) ? warsawDateIso(stamp(appeal)) : ""))) delete data.odwolania[id];

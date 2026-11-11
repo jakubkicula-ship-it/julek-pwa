@@ -1,0 +1,77 @@
+.school-times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+.school-rule {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 12px;
+  margin: 12px 0;
+}
+.school-rule summary {
+  line-height: 1.5;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.school-rule summary span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.school-rule .field select {
+  width: 100%;
+  max-width: 100%;
+}
+.school-rule .switch-row {
+  gap: 12px;
+}
+.user-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px;
+  margin: 12px 0;
+}
+.user-card > strong,
+.user-card > small {
+  display: block;
+  margin-bottom: 8px;
+}
+.user-card > small {
+  color: var(--muted);
+}
+.subject-mapping {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+}
+.subject-mapping select {
+  max-width: 100%;
+  padding: 10px;
+}
+.school-announcement strong {
+  text-transform: none;
+  font-size: 13px;
+}
+.school-announcement small {
+  font-size: 11px;
+  color: var(--accent, #215744);
+  font-weight: 650;
+}
+.home-compact .child-announcements .announcements-content {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+.school-grade-options {
+  padding-inline-start: 14px;
+  border-inline-start: 2px solid var(--line);
+}
+.switch-row input {
+  flex-shrink: 0;
+}
+#school-error:empty,
+#user-error:empty {
+  display: none;
+}
